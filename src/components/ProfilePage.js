@@ -13,14 +13,10 @@ import {
   Image as ImageIcon,
   Tag,
   ShoppingBag,
-  Briefcase,
   ExternalLink
 } from "lucide-react";
 import { shortenAddress } from "../utils";
 import { motion } from "framer-motion";
-import { ESCROW_CONTRACT_ID, SOROBAN_SERVER, NETWORK_PASSPHRASE } from "../constants";
-import * as StellarSdk from "@stellar/stellar-sdk";
-
 
 export const containerVariants = {
   hidden: { opacity: 0 },
@@ -59,9 +55,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
   const [purchasedCount, setPurchasedCount] = useState(0);
   const [marketHistory, setMarketHistory] = useState([]);
   const [xlmBalance, setXlmBalance] = useState("0");
-
-  const [jobs, setJobs] = useState([]);
-  const [loadingJobs, setLoadingJobs] = useState(false);
 
   const avatar = generateAvatar(walletAddress);
 
@@ -103,58 +96,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
     return () => unsubscribe();
   }, [walletAddress, account]);
 
-  useEffect(() => {
-    if (!walletAddress) return;
-    const loadJobs = async () => {
-      setLoadingJobs(true);
-      try {
-        const dummy = new StellarSdk.Account(walletAddress, "0");
-        const totalTx = new StellarSdk.TransactionBuilder(dummy, {
-          fee: "100", networkPassphrase: NETWORK_PASSPHRASE,
-        })
-          .addOperation(StellarSdk.Operation.invokeContractFunction({
-            contract: ESCROW_CONTRACT_ID,
-            function: "get_total",
-            args: [],
-          }))
-          .setTimeout(30).build();
-        const totalSim = await SOROBAN_SERVER.simulateTransaction(totalTx);
-        if (!totalSim?.result?.retval) { setJobs([]); return; }
-        const total = Number(StellarSdk.scValToNative(totalSim.result.retval));
-        
-        const jobPromises = Array.from({ length: total }, (_, i) => {
-          const id = i + 1;
-          return (async () => {
-            try {
-              const jobTx = new StellarSdk.TransactionBuilder(dummy, {
-                fee: "100", networkPassphrase: NETWORK_PASSPHRASE,
-              })
-                .addOperation(StellarSdk.Operation.invokeContractFunction({
-                  contract: ESCROW_CONTRACT_ID,
-                  function: "get_job",
-                  args: [StellarSdk.nativeToScVal(id, { type: "u32" })],
-                }))
-                .setTimeout(30).build();
-              const sim = await SOROBAN_SERVER.simulateTransaction(jobTx);
-              if (sim?.result?.retval) {
-                const job = StellarSdk.scValToNative(sim.result.retval);
-                return { ...job, id };
-              }
-              return null;
-            } catch { return null; }
-          })();
-        });
-        const results = (await Promise.all(jobPromises)).filter(Boolean);
-        setJobs(results);
-      } catch (e) {
-        console.error("Jobs load error:", e);
-      } finally {
-        setLoadingJobs(false);
-      }
-    };
-    loadJobs();
-  }, [walletAddress]);
-
   const handleCopy = () => {
     if (walletAddress) {
       navigator.clipboard.writeText(walletAddress);
@@ -195,29 +136,12 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
     minHeight: "120px",
   };
 
-  const getStatusKey = (s) => {
-    if (!s) return "Open";
-    if (typeof s === "string") return s;
-    if (typeof s === "object") return Object.keys(s)[0];
-    return "Open";
-  };
 
-  const STATUS_COLORS = {
-    Open: "#60a5fa",
-    InProgress: "#facc15",
-    Submitted: "#fb923c",
-    Completed: "#34d399",
-    Cancelled: "#f87171",
-  };
 
-  const myPostedJobs = jobs.filter(j => String(j.client) === walletAddress);
-  const myFreelanceJobs = jobs.filter(j => String(j.freelancer) === walletAddress && String(j.freelancer) !== String(j.client));
-  const completedJobs = jobs.filter(j => getStatusKey(j.status) === "Completed" && (String(j.client) === walletAddress || String(j.freelancer) === walletAddress));
-  
-  const reputationScore = Math.min(100, completedJobs.length * 20 + (propNfts?.length || 0) * 5);
+  const reputationScore = Math.min(100, (propNfts?.length || 0) * 10);
 
-  const certificates = propNfts?.filter(n => n.name?.toLowerCase().includes("certificate") || n.name?.toLowerCase().includes("job cert")) || [];
-  const regularNFTs = propNfts?.filter(n => !n.name?.toLowerCase().includes("certificate") && !n.name?.toLowerCase().includes("job cert")) || [];
+  const certificates = (propNfts || []).filter(n => n && (n.name?.toLowerCase().includes("certificate") || n.name?.toLowerCase().includes("job cert"))) || [];
+  const regularNFTs = (propNfts || []).filter(n => n && (!n.name?.toLowerCase().includes("certificate") && !n.name?.toLowerCase().includes("job cert"))) || [];
 
   if (!walletAddress) return <div style={{ padding: "40px", textAlign: "center" }}>Please connect wallet</div>;
 
@@ -394,9 +318,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
           <button style={tabButtonStyle("history")} onClick={() => setActiveTab("history")}>
             <History size={16} /> History
           </button>
-          <button style={tabButtonStyle("jobs")} onClick={() => setActiveTab("jobs")}>
-            <Briefcase size={16} /> Jobs
-          </button>
         </div>
       </motion.div>
 
@@ -433,9 +354,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
                 <div style={{ height: "100%", width: `${reputationScore}%`, background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: "4px", transition: "width 1s ease" }} />
               </div>
               <div style={{ display: "flex", gap: "16px", marginTop: "10px", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.78rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                  {completedJobs.length} jobs completed
-                </span>
                 <span style={{ fontSize: "0.78rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
                   {propNfts?.length || 0} NFTs owned
                 </span>
@@ -494,9 +412,9 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
                     ) : "🖼️"}
                   </div>
                   <div style={{ padding: "16px" }}>
-                    <h4 style={{ margin: "0 0 4px", color: isDark ? "#fff" : "#0f172a", fontSize: "1rem" }}>{nft.name || `NFT #${nft.id}`}</h4>
+                    <h4 style={{ margin: "0 0 4px", color: isDark ? "#fff" : "#0f172a", fontSize: "1rem" }}>{nft.name || `NFT #${nft?.id || "???"}`}</h4>
                     <span style={{ fontSize: "0.75rem", color: "#6366f1", background: "rgba(99, 102, 241, 0.1)", padding: "2px 8px", borderRadius: "4px" }}>
-                      ID: {nft.id.toString().slice(0,8)}...
+                      ID: {(nft.id || "").toString().slice(0,8)}...
                     </span>
                   </div>
                 </motion.div>
@@ -548,71 +466,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
               <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>
                 No transaction history found.
               </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* JOBS TAB */}
-        {activeTab === "jobs" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible">
-            {loadingJobs ? (
-              <div style={{ textAlign: "center", padding: "40px" }}>Loading jobs...</div>
-            ) : (
-              <>
-                {/* Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
-                  {[
-                    { label: "Jobs Posted", value: myPostedJobs.length, color: "#60a5fa" },
-                    { label: "Jobs Accepted", value: myFreelanceJobs.length, color: "#a78bfa" },
-                    { label: "Completed", value: completedJobs.length, color: "#34d399" },
-                  ].map(s => (
-                    <div key={s.label} style={{
-                      background: isDark ? "rgba(255,255,255,0.04)" : "#fff",
-                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
-                      borderRadius: "12px", padding: "16px", textAlign: "center",
-                    }}>
-                      <div style={{ fontSize: "1.5rem", fontWeight: 800, color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: "0.75rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", marginTop: "4px" }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Job list */}
-                {jobs.filter(j => String(j.client) === walletAddress || String(j.freelancer) === walletAddress).length === 0 ? (
-                  <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>No jobs yet.</div>
-                ) : (
-                  jobs
-                    .filter(j => String(j.client) === walletAddress || String(j.freelancer) === walletAddress)
-                    .slice(0, 10)
-                    .map(job => {
-                      const sk = getStatusKey(job.status);
-                      const statusColor = STATUS_COLORS[sk] || "#60a5fa";
-                      const isClient = String(job.client) === walletAddress;
-                      return (
-                        <div key={job.id} style={{
-                          display: "flex", justifyContent: "space-between", alignItems: "center",
-                          padding: "14px 16px", marginBottom: "10px",
-                          background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc",
-                          border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid #e2e8f0",
-                          borderRadius: "12px",
-                        }}>
-                          <div>
-                            <div style={{ fontWeight: 600, color: isDark ? "#fff" : "#0f172a", fontSize: "0.9rem" }}>{job.title}</div>
-                            <div style={{ fontSize: "0.75rem", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", marginTop: "2px" }}>
-                              {isClient ? "Posted by you" : "Accepted by you"} • Job #{job.id}
-                            </div>
-                          </div>
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontSize: "0.72rem", fontWeight: 700, color: statusColor, background: `${statusColor}20`, padding: "3px 10px", borderRadius: "20px", marginBottom: "4px" }}>{sk}</div>
-                            <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#10b981" }}>
-                              {(Number(job.amount) / 10_000_000).toFixed(1)} XLM
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                )}
-              </>
             )}
           </motion.div>
         )}

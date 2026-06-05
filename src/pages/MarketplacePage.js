@@ -21,7 +21,7 @@ const isCertificate = (name) =>
     name.toLowerCase().includes("job cert")
   );
 
-export default function MarketplacePage({ walletAddress, initialFilter = "all", title = "Marketplace" }) {
+export default function MarketplacePage({ walletAddress, initialFilter = "all", title = "Marketplace", hideTabs = false, hideStats = false }) {
   const { walletType } = useWallet();
   const { isDark } = useTheme();
 
@@ -344,43 +344,47 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           </h1>
           <p style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", marginTop: "4px" }}>Buy and sell NFTs on Stellar blockchain</p>
           <div style={{ width: "48px", height: "3px", background: "linear-gradient(135deg,#8b5cf6,#3b82f6)", borderRadius: "2px", margin: "8px auto 0" }} />
-          <div style={{ display: "flex", justifyContent: "center", gap: "32px", marginTop: "24px", flexWrap: "wrap" }}>
-            {[
-              { label: "Total NFTs", value: listings.length },
-              { label: "For Sale", value: listedCount, color: "#34d399" },
-              { label: "My NFTs", value: myCount, color: "#60a5fa" },
-              { label: "Certificates", value: certCount, color: "#f59e0b" },
-            ].map(stat => (
-              <div key={stat.label} style={{ textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem", fontWeight: 800, color: stat.color || "#a78bfa" }}>{stat.value}</div>
-                <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{stat.label}</div>
-              </div>
-            ))}
-          </div>
+          {!hideStats && (
+            <div style={{ display: "flex", justifyContent: "center", gap: "32px", marginTop: "24px", flexWrap: "wrap" }}>
+              {[
+                { label: "Total NFTs", value: listings.length },
+                { label: "For Sale", value: listedCount, color: "#34d399" },
+                { label: "My NFTs", value: myCount, color: "#60a5fa" },
+                { label: "Certificates", value: certCount, color: "#f59e0b" },
+              ].map(stat => (
+                <div key={stat.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "1.5rem", fontWeight: 800, color: stat.color || "#a78bfa" }}>{stat.value}</div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b" }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Tabs */}
-        <motion.div variants={itemVariants} style={{ marginBottom: "20px" }}>
-          <div style={{ display: "flex", gap: "8px", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", padding: "6px", borderRadius: "14px", border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)" }}>
-            {[
-              { key: "all", label: "All NFTs", count: listings.length },
-              { key: "sale", label: "For Sale", count: listedCount },
-              { key: "mine", label: "My NFTs", count: myCount },
-              { key: "cert", label: "Certificates", count: certCount },
-            ].map(tab => (
-              <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
-                flex: 1, padding: "10px 6px", borderRadius: "10px", border: "none", cursor: "pointer",
-                fontWeight: 600, fontSize: "clamp(0.65rem,2vw,0.85rem)",
-                background: filter === tab.key ? "linear-gradient(135deg,#7c3aed,#4f46e5)" : "transparent",
-                color: filter === tab.key ? "#fff" : isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
-                transition: "all 0.2s",
-              }}>
-                {tab.label}
-                <span style={{ marginLeft: "5px", fontSize: "0.7rem", background: filter === tab.key ? "rgba(255,255,255,0.2)" : "rgba(99,102,241,0.15)", padding: "2px 6px", borderRadius: "10px" }}>{tab.count}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
+        {!hideTabs && (
+          <motion.div variants={itemVariants} style={{ marginBottom: "20px" }}>
+            <div style={{ display: "flex", gap: "8px", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", padding: "6px", borderRadius: "14px", border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)" }}>
+              {[
+                { key: "all", label: "All NFTs", count: listings.length },
+                { key: "sale", label: "For Sale", count: listedCount },
+                { key: "mine", label: "My NFTs", count: myCount },
+                { key: "cert", label: "Certificates", count: certCount },
+              ].map(tab => (
+                <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
+                  flex: 1, padding: "10px 6px", borderRadius: "10px", border: "none", cursor: "pointer",
+                  fontWeight: 600, fontSize: "clamp(0.65rem,2vw,0.85rem)",
+                  background: filter === tab.key ? "linear-gradient(135deg,#7c3aed,#4f46e5)" : "transparent",
+                  color: filter === tab.key ? "#fff" : isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
+                  transition: "all 0.2s",
+                }}>
+                  {tab.label}
+                  <span style={{ marginLeft: "5px", fontSize: "0.7rem", background: filter === tab.key ? "rgba(255,255,255,0.2)" : "rgba(99,102,241,0.15)", padding: "2px 6px", borderRadius: "10px" }}>{tab.count}</span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
 
         {/* Sort + Refresh */}
         <motion.div variants={itemVariants} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", gap: "12px" }}>
