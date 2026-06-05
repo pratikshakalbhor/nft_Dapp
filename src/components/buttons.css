@@ -1,0 +1,70 @@
+/* Premium Button Styles */
+
+.btn-primary {
+  @apply bg-gradient-to-r from-purple-600 to-indigo-600 
+         hover:from-purple-500 hover:to-indigo-500 
+         text-white font-medium py-3 px-6 rounded-xl 
+         shadow-lg shadow-purple-900/40 
+         transition-all duration-300 hover:scale-[1.03]
+         cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-black;
+}
+
+.btn-primary:disabled {
+  @apply opacity-50 cursor-not-allowed hover:scale-100;
+}
+
+.btn-secondary {
+  @apply bg-gradient-to-r from-indigo-700 to-purple-700 
+         hover:from-indigo-600 hover:to-purple-600 
+         text-white font-medium py-2 px-6 rounded-xl 
+         shadow-lg shadow-indigo-900/50 
+         transition-all duration-300 hover:scale-105
+         cursor-pointer border-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-black;
+}
+
+.btn-secondary:disabled {
+  @apply opacity-50 cursor-not-allowed hover:scale-100;
+}
+
+.btn-outline {
+  @apply border-2 border-purple-600 text-purple-400 
+         hover:bg-purple-600/10 hover:text-white 
+         font-medium py-2 px-6 rounded-xl 
+         transition-all duration-300 hover:scale-105
+         cursor-pointer bg-transparent focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-black;
+}
+
+.btn-outline:disabled {
+  @apply opacity-50 cursor-not-allowed hover:scale-100;
+}
+
+.btn-small {
+  @apply bg-gradient-to-r from-purple-600 to-indigo-600 
+         hover:from-purple-500 hover:to-indigo-500 
+         text-white font-medium py-1 px-4 rounded-lg 
+         shadow-lg shadow-purple-900/50 
+         transition-all duration-300 hover:scale-105
+         cursor-pointer border-0 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500;
+}
+
+.btn-group {
+  @apply flex gap-3 flex-wrap;
+}
+
+/* Subtle hover animations */
+@keyframes button-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+}
+
+.btn-primary:hover,
+.btn-secondary:hover {
+  animation: button-glow 0.6s ease-in-out;
+}

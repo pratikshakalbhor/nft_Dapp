@@ -1,0 +1,113 @@
+/* ── Job List ── */
+.job-list-subtitle {
+  text-align: center;
+  opacity: 0.6;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.job-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  gap: 12px;
+}
+
+.job-card:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.4);
+  transform: translateY(-2px);
+}
+
+.job-card-left h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: white;
+}
+
+.job-card-left p {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-bottom: 6px;
+}
+
+.job-role {
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  background: rgba(124, 58, 237, 0.2);
+  border-radius: 20px;
+  color: #a78bfa;
+}
+
+.job-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 120px;
+}
+
+.job-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.job-amount {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #34d399;
+}
+
+.chat-btn {
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.chat-loading, .chat-empty {
+  text-align: center;
+  padding: 40px;
+  opacity: 0.5;
+}
+
+.chat-job-title {
+  font-weight: 700;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.chat-with {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin: 4px 0 0;
+}
+
+.sender-name {
+  font-size: 0.7rem;
+  opacity: 0.5;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.back-btn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
