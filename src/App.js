@@ -16,6 +16,7 @@ import WalletModal from "./WalletModal";
 import ProfilePage from "./components/ProfilePage";
 import { errorHandler } from "./utils/errorHandler";
 import NotificationPanel from "./components/NotificationPanel";
+import DashboardPage from "./pages/DashboardPage";
 
 import { useTheme } from "./context/ThemeContext";
 
@@ -141,15 +142,16 @@ function App() {
               left: 0,
               right: 0,
               height: "60px",
-              background: isDark ? "rgba(13,17,28,0.95)" : "rgba(255,255,255,0.95)",
-              backdropFilter: "blur(12px)",
-              borderBottom: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.08)",
+              background: isDark ? "rgba(10, 10, 26, 0.7)" : "rgba(255, 255, 255, 0.7)",
+              backdropFilter: "blur(20px) saturate(160%)",
+              borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.05)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "0 16px",
+              padding: "0 24px",
               gap: "8px",
-              zIndex: 45,
+              zIndex: 100,
+              boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)",
             }}>
 
               {/* Left — Logo */}
@@ -319,12 +321,26 @@ function App() {
                       </p>
                     </div>
                   </div>
-                ) : <Navigate to="/gallery" replace />
+                ) : <Navigate to="/dashboard" replace />
               } />
-
               <Route
                 path="/"
-                element={<Navigate to="/gallery" replace />}
+                element={<Navigate to="/dashboard" replace />}
+              />
+              
+              <Route
+                path="/dashboard"
+                element={
+                  walletAddress ? (
+                    <div className="pages-container">
+                      <DashboardPage 
+                        walletAddress={walletAddress} 
+                        balance={accountDetails?.balances.find(b => b.asset_type === "native")?.balance || "0"} 
+                        nfts={nfts} 
+                      />
+                    </div>
+                  ) : <Navigate to="/login" replace />
+                }
               />
               
               <Route
@@ -367,7 +383,7 @@ function App() {
                 element={
                   walletAddress ? (
                     <div className="pages-container">
-                      <MarketplacePage walletAddress={walletAddress} nfts={nfts} server={server} />
+                      <MarketplacePage walletAddress={walletAddress} nfts={nfts} server={server} hideTabs={true} />
                     </div>
                   ) : <Navigate to="/login" replace />
                 }
@@ -383,6 +399,8 @@ function App() {
                         server={server} 
                         initialFilter="sale" 
                         title="For Sale" 
+                        hideTabs={true}
+                        hideStats={true}
                       />
                     </div>
                   ) : <Navigate to="/login" replace />
@@ -399,6 +417,8 @@ function App() {
                         server={server} 
                         initialFilter="mine" 
                         title="My NFTs" 
+                        hideTabs={true}
+                        hideStats={true}
                       />
                     </div>
                   ) : <Navigate to="/login" replace />
@@ -415,6 +435,8 @@ function App() {
                         server={server} 
                         initialFilter="cert" 
                         title="Certificates" 
+                        hideTabs={true}
+                        hideStats={true}
                       />
                     </div>
                   ) : <Navigate to="/login" replace />

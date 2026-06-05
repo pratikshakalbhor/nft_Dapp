@@ -14,7 +14,8 @@ import {
   Wallet,
   Tag,
   Briefcase,
-  Award
+  Award,
+  LayoutDashboard
 } from "lucide-react";
 
 const SettingsModal = ({ isDark, toggleTheme, onClose }) => {
@@ -98,6 +99,7 @@ const Sidebar = ({ walletAddress, onDisconnect, isOpen, setIsOpen }) => {
   };
 
   const links = [
+    { to: "/dashboard", icon: <LayoutDashboard size={18} />, label: "Dashboard" },
     { to: "/gallery", icon: <Images size={18} />, label: "Collection" },
     { to: "/mint", icon: <ImagePlus size={18} />, label: "Mint NFT" },
     { to: "/marketplace", icon: <Store size={18} />, label: "Marketplace" },
@@ -113,9 +115,9 @@ const Sidebar = ({ walletAddress, onDisconnect, isOpen, setIsOpen }) => {
   };
 
   const themeStyles = {
-    sidebarBg: isDark ? "rgba(13, 17, 28, 0.98)" : "rgba(255,255,255,0.98)",
-    activeLinkBg: isDark ? "rgba(236, 72, 153, 0.2)" : "rgba(236,72,153,0.1)",
-    inactiveLinkColor: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)",
+    sidebarBg: isDark ? "rgba(10, 10, 26, 0.65)" : "rgba(255, 255, 255, 0.65)",
+    activeLinkBg: isDark ? "rgba(236, 72, 153, 0.15)" : "rgba(236, 72, 153, 0.08)",
+    inactiveLinkColor: isDark ? "rgba(255, 255, 255, 0.55)" : "rgba(0, 0, 0, 0.55)",
     activeLinkColor: isDark ? "#fff" : "#1a1a2e",
     logoText: isDark ? "#fff" : "#1a1a2e",
     walletBadgeBg: isDark ? "rgba(236,72,153,0.15)" : "rgba(236,72,153,0.1)",
@@ -149,9 +151,9 @@ const Sidebar = ({ walletAddress, onDisconnect, isOpen, setIsOpen }) => {
       borderRight: `1px solid ${themeStyles.borderColor}`,
       display: "flex",
       flexDirection: "column",
-      zIndex: 50,
-      backdropFilter: "blur(12px)",
-      boxShadow: isDark ? 'none' : '2px 0 10px rgba(0,0,0,0.05)'
+      zIndex: 100,
+      backdropFilter: "blur(24px) saturate(160%)",
+      boxShadow: isDark ? "10px 0 30px rgba(0,0,0,0.5)" : "10px 0 30px rgba(0,0,0,0.03)"
     }}>
       {/* Logo */}
       <div style={{

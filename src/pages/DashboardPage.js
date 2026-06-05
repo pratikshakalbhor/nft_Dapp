@@ -2,9 +2,19 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import * as StellarSdk from "@stellar/stellar-sdk";
-import { HORIZON_URL, CONTRACT_ID } from "../constants";
+import { HORIZON_URL } from "../constants";
 import { useTheme } from "../context/ThemeContext";
-import { Wallet, ImagePlus, ShoppingBag, Zap, Images, Plus, ArrowUpRight } from "lucide-react";
+import { 
+  ShoppingBag, 
+  Zap, 
+  Images, 
+  Plus, 
+  ArrowUpRight, 
+  TrendingUp, 
+  Award, 
+  Activity,
+  ChevronRight
+} from "lucide-react";
 
 const shortenAddr = (addr) => {
   if (!addr || typeof addr !== "string") return "";
@@ -14,17 +24,14 @@ const shortenAddr = (addr) => {
 const getTxType = (tx) => {
   try {
     const envelope = StellarSdk.TransactionBuilder.fromXDR(
-      tx.envelope_xdr, "Test SDF Network ; September 2015"
+      tx.envelope_xdr, StellarSdk.Networks.TESTNET
     );
     const op = envelope.operations?.[0];
     if (op?.type === "invokeHostFunction") {
-      const xdr = op.func?.toXDR?.("base64") || "";
-      if (xdr.includes(CONTRACT_ID.slice(0, 8))) {
-        return { icon: <ShoppingBag size={18} />, label: "NFT Action", color: "rgba(236,72,153,0.15)", text: "#f472b6" };
-      }
+      return { icon: <ShoppingBag size={16} />, label: "Marketplace Action", color: "#ec4899" };
     }
   } catch { }
-  return { icon: <Zap size={18} />, label: "Transaction", color: "rgba(236,72,153,0.1)", text: "#f472b6" };
+  return { icon: <Zap size={16} />, label: "Network Transfer", color: "#6366f1" };
 };
 
 export default function DashboardPage({ walletAddress, balance, nfts }) {
@@ -41,9 +48,9 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
         const server = new StellarSdk.Horizon.Server(HORIZON_URL);
         const { records } = await server.transactions()
           .forAccount(walletAddress).limit(5).order("desc").call();
-        setRecentTxs(records.slice(0, 3));
+        setRecentTxs(records);
       } catch (e) {
-        console.error("NFT Dashboard tx error:", e);
+        console.error("Dashboard tx error:", e);
       } finally {
         setTxLoading(false);
       }
@@ -51,97 +58,170 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
     fetchTxs();
   }, [walletAddress]);
 
-  const cardStyle = {
-    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.8)",
-    border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.05)",
-    borderRadius: "24px", padding: "28px",
-    boxShadow: isDark ? "none" : "0 10px 40px rgba(236,72,153,0.05)",
-    backdropFilter: "blur(12px)"
+  const glassStyle = {
+    background: isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.7)",
+    backdropFilter: "blur(20px) saturate(160%)",
+    border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+    borderRadius: "24px",
+    padding: "24px",
+    boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.05)",
   };
 
-  const StatCard = ({ icon, label, value, color, delay }) => (
-    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay }}
-      style={{
-        ...cardStyle,
-        display: "flex", flexDirection: "column", gap: "12px", flex: "1 1 200px",
-        background: `linear-gradient(135deg, ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.9)'}, ${color})`
-      }}>
-      <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", color: "#ec4899", boxShadow: "0 4px 12px rgba(236,72,153,0.2)" }}>
-        {icon}
-      </div>
-      <div>
-        <div style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", fontSize: "0.85rem", fontWeight: 600 }}>{label}</div>
-        <div style={{ color: isDark ? "#fff" : "#1a1a2e", fontSize: "1.8rem", fontWeight: 900, marginTop: "4px" }}>{value}</div>
-      </div>
-    </motion.div>
-  );
-
   const stats = [
-    { icon: <Images size={24} />, label: "Collection Size", value: nfts?.length || 0, color: "rgba(236,72,153,0.05)", delay: 0 },
-    { icon: <Wallet size={24} />, label: "Wallet Balance", value: `${balance} XLM`, color: "rgba(139,92,246,0.05)", delay: 0.1 },
+    { 
+        icon: <Images size={20} />, 
+        label: "Total Assets", 
+        value: nfts?.length || 0, 
+        color: "#8b5cf6",
+        sub: "NFTs in wallet"
+    },
+    { 
+        icon: <TrendingUp size={20} />, 
+        label: "Wallet Value", 
+        value: `${balance} XLM`, 
+        color: "#10b981",
+        sub: "Available balance"
+    },
+    { 
+        icon: <Award size={20} />, 
+        label: "Certificates", 
+        value: nfts?.filter(n => n.isCert).length || 0, 
+        color: "#f59e0b",
+        sub: "Verified credentials"
+    }
   ];
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
+  };
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-      style={{ maxWidth: "1000px", margin: "0 auto", padding: "20px" }}>
+    <motion.div 
+      initial="hidden" 
+      animate="visible" 
+      variants={containerVariants}
+      style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}
+    >
+      {/* Welcome Header */}
+      <motion.div variants={itemVariants} style={{ marginBottom: "2.5rem" }}>
+        <h4 style={{ color: "#ec4899", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.8rem", marginBottom: "8px" }}>
+          Dashboard Overview
+        </h4>
+        <h1 style={{ fontSize: "2.5rem", fontWeight: 900, marginBottom: "8px", background: "linear-gradient(90deg, #ec4899, #8b5cf6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          Welcome, Collector
+        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", opacity: 0.7 }}>
+          <Activity size={16} />
+          <span>Active Session for {shortenAddr(walletAddress)}</span>
+        </div>
+      </motion.div>
 
-      <div style={{ marginBottom: "40px" }}>
-        <h1 style={{ fontSize: "2.5rem", fontWeight: 900, color: isDark ? "#fff" : "#1a1a2e", letterSpacing: "-1px" }}>Collector Hub</h1>
-        <p style={{ opacity: 0.6, fontSize: "1.1rem" }}>Managing assets for {shortenAddr(walletAddress)}</p>
+      {/* Stats Cluster */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px", marginBottom: "2.5rem" }}>
+        {stats.map((stat, i) => (
+          <motion.div key={i} variants={itemVariants} style={{ ...glassStyle, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: "-10px", right: "-10px", width: "100px", height: "100px", background: `${stat.color}15`, borderRadius: "50%", filter: "blur(20px)" }} />
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "20px" }}>
+              <div style={{ padding: "12px", background: `${stat.color}20`, color: stat.color, borderRadius: "16px" }}>
+                {stat.icon}
+              </div>
+              <ArrowUpRight size={20} style={{ opacity: 0.3 }} />
+            </div>
+            <div style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", fontSize: "0.9rem", fontWeight: 600 }}>{stat.label}</div>
+            <div style={{ fontSize: "2rem", fontWeight: 900, margin: "4px 0" }}>{stat.value}</div>
+            <div style={{ fontSize: "0.75rem", opacity: 0.5 }}>{stat.sub}</div>
+          </motion.div>
+        ))}
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "40px" }}>
-        {stats.map((s) => <StatCard key={s.label} {...s} />)}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "24px" }}>
         
-        <motion.div whileHover={{ scale: 1.02 }} onClick={() => navigate("/mint")}
-          style={{ ...cardStyle, flex: "1 1 300px", background: "linear-gradient(135deg, #ec4899, #8b5cf6)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", color: "#fff", border: "none" }}>
-          <div style={{ padding: "12px", background: "rgba(255,255,255,0.2)", borderRadius: "50%" }}><Plus size={32} /></div>
-          <div>
-            <div style={{ fontWeight: 900, fontSize: "1.3rem" }}>Mint New NFT</div>
-            <div style={{ fontSize: "0.85rem", opacity: 0.9 }}>Digitalize your creation</div>
-          </div>
+        {/* Quick Actions */}
+        <motion.div variants={itemVariants} style={glassStyle}>
+            <h3 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+                Quick Actions
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <button onClick={() => navigate("/mint")} style={{ 
+                    padding: "20px", borderRadius: "20px", border: "none", 
+                    background: "linear-gradient(135deg, #ec4899, #8b5cf6)",
+                    color: "#fff", cursor: "pointer", textAlign: "left",
+                    transition: "transform 0.2s"
+                }} onMouseOver={e => e.currentTarget.style.transform = "translateY(-4px)"} onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}>
+                    <Plus size={24} style={{ marginBottom: "12px" }} />
+                    <div style={{ fontWeight: 800 }}>Mint NFT</div>
+                    <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>Create new asset</div>
+                </button>
+                <button onClick={() => navigate("/marketplace")} style={{ 
+                    padding: "20px", borderRadius: "20px", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", 
+                    background: isDark ? "rgba(255,255,255,0.05)" : "#fff",
+                    color: isDark ? "#fff" : "#1a1a2e", cursor: "pointer", textAlign: "left",
+                    transition: "transform 0.2s"
+                }} onMouseOver={e => e.currentTarget.style.transform = "translateY(-4px)"} onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}>
+                    <ShoppingBag size={24} style={{ marginBottom: "12px", color: "#ec4899" }} />
+                    <div style={{ fontWeight: 800 }}>Marketplace</div>
+                    <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>Browse all NFTs</div>
+                </button>
+            </div>
+            
+            <div onClick={() => navigate("/gallery")} style={{ 
+                marginTop: "16px", padding: "16px", borderRadius: "16px",
+                background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                display: "flex", alignItems: "center", gap: "16px", cursor: "pointer"
+            }}>
+                <Images style={{ color: "#8b5cf6" }} />
+                <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>View Your Gallery</div>
+                    <div style={{ fontSize: "0.75rem", opacity: 0.6 }}>Manage your collected pieces</div>
+                </div>
+                <ChevronRight size={18} />
+            </div>
         </motion.div>
-      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "32px" }}>
-        
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "24px" }}>Quick Explore</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div onClick={() => navigate("/marketplace")} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px", background: isDark ? "rgba(255,255,255,0.03)" : "#fff", borderRadius: "16px", cursor: "pointer", border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
-              <div style={{ color: "#ec4899" }}><ShoppingBag /></div>
-              <div style={{ flex: 1, fontWeight: 700 }}>NFT Marketplace</div>
-              <ArrowUpRight size={18} opacity={0.5} />
+        {/* Recent Activity */}
+        <motion.div variants={itemVariants} style={glassStyle}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+                <h3 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Recent Activity</h3>
+                <Activity size={20} style={{ opacity: 0.3 }} />
             </div>
-            <div onClick={() => navigate("/gallery")} style={{ display: "flex", alignItems: "center", gap: "16px", padding: "16px", background: isDark ? "rgba(255,255,255,0.03)" : "#fff", borderRadius: "16px", cursor: "pointer", border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}` }}>
-              <div style={{ color: "#8b5cf6" }}><Images /></div>
-              <div style={{ flex: 1, fontWeight: 700 }}>View Collection</div>
-              <ArrowUpRight size={18} opacity={0.5} />
-            </div>
-          </div>
-        </div>
-
-        <div style={cardStyle}>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: "24px" }}>Recent Activity</h2>
-          {txLoading ? (
-            <div style={{ textAlign: "center", opacity: 0.5, padding: "20px" }}>Fetching...</div>
-          ) : recentTxs.length === 0 ? (
-            <div style={{ textAlign: "center", opacity: 0.5, padding: "20px" }}>No recent NFT steps.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {recentTxs.map(tx => {
-                const type = getTxType(tx);
-                return (
-                  <div key={tx.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", background: "rgba(255,255,255,0.02)", borderRadius: "12px" }}>
-                    <div style={{ color: "#ec4899" }}>{type.icon}</div>
-                    <div style={{ flex: 1, fontSize: "0.9rem", fontWeight: 600 }}>{type.label}</div>
-                    <div style={{ fontSize: "0.7rem", opacity: 0.5 }}>{shortenAddr(tx.hash)}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {txLoading ? (
+                <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>Syncing with blockchain...</div>
+            ) : recentTxs.length === 0 ? (
+                <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>No recent transactions found.</div>
+            ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {recentTxs.map(tx => {
+                        const type = getTxType(tx);
+                        return (
+                            <div key={tx.id} style={{ 
+                                padding: "12px", borderRadius: "16px", 
+                                background: isDark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                                display: "flex", alignItems: "center", gap: "12px"
+                            }}>
+                                <div style={{ color: type.color }}>{type.icon}</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{type.label}</div>
+                                    <div style={{ fontSize: "0.65rem", opacity: 0.5, fontFamily: "monospace" }}>{tx.id.slice(0, 16)}...</div>
+                                </div>
+                                <div style={{ fontSize: "0.7rem", opacity: 0.5 }}>
+                                    {new Date(tx.created_at).toLocaleDateString()}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </motion.div>
 
       </div>
     </motion.div>
