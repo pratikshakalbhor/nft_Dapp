@@ -2,7 +2,7 @@ import { Networks, rpc } from "@stellar/stellar-sdk";
 
 export const NETWORK = "TESTNET";
 export const NETWORK_PASSPHRASE = Networks.TESTNET;
-export const RPC_URL = "https://soroban-testnet.stellar.org";
+export const RPC_URL = "https://rpc-testnet.stellar.org";
 export const HORIZON_URL = "https://horizon-testnet.stellar.org";
 
 export const CONTRACT_ID = "CBFGZCD2HZK35OAP7MCX3JEEHKGQLUSEOG3SPPCU43PTWEIOGFKEEPVC";

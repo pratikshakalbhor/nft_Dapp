@@ -222,39 +222,27 @@ export const fetchAllNFTs = async (walletAddress) => {
 
     if (totalNum === null || totalNum === 0) return [];
 
-    // Fetch all NFTs in parallel (no owner filter)
-    const nftPromises = Array.from({ length: totalNum }, (_, i) => {
-      const id = i + 1;
-      return (async () => {
-        try {
-          const ownerResult = await performReadOnlyCall(
-            walletAddress,
-            contract.call("get_owner", nativeToScVal(id, { type: "u32" }))
-          );
-          const ownerAddress = ownerResult
-            ? new Address(ownerResult).toString()
-            : null;
-          if (!ownerAddress) return null;
+    // Reduced parallelization to prevent 502/rate-limiting
+    const allNfts = [];
+    for (let id = 1; id <= totalNum; id++) {
+      try {
+        const ownerResult = await performReadOnlyCall(
+          walletAddress,
+          contract.call("get_owner", nativeToScVal(id, { type: "u32" }))
+        );
+        const ownerAddress = ownerResult ? new Address(ownerResult).toString() : null;
+        if (!ownerAddress) continue;
 
-          const [name, image] = await Promise.all([
-            performReadOnlyCall(
-              walletAddress,
-              contract.call("get_name", nativeToScVal(id, { type: "u32" }))
-            ),
-            performReadOnlyCall(
-              walletAddress,
-              contract.call("get_image", nativeToScVal(id, { type: "u32" }))
-            ),
-          ]);
-          return { id, owner: ownerAddress, name, image };
-        } catch {
-          return null;
-        }
-      })();
-    });
-
-    const allNfts = await Promise.all(nftPromises);
-    return allNfts.filter(Boolean);
+        const [name, image] = await Promise.all([
+          performReadOnlyCall(walletAddress, contract.call("get_name", nativeToScVal(id, { type: "u32" }))),
+          performReadOnlyCall(walletAddress, contract.call("get_image", nativeToScVal(id, { type: "u32" }))),
+        ]);
+        allNfts.push({ id, owner: ownerAddress, name, image });
+      } catch (err) {
+        console.warn(`Failed to fetch NFT #${id}`, err);
+      }
+    }
+    return allNfts;
   } catch (error) {
     console.error("Error fetching all NFTs:", error);
     return [];
