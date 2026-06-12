@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Send, User, MessageSquare, Loader2, Plus } from 'lucide-react';
 import { shortenAddress } from '../utils';
 import albedo from '@albedo-link/intent';
-import { Wallet } from 'ethers';
+import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
 
 const ChatPage = () => {
   const { walletAddress, walletType } = useWallet();
@@ -39,21 +39,24 @@ const ChatPage = () => {
       
       if (walletType === 'ALBEDO') {
         const message = "Sign in to NFT Hub Messaging. This will create your secure Web3 identity.";
-        await albedo.signMessage({
+        const signResult = await albedo.signMessage({
             message: message,
             address: walletAddress
         });
         
-        // Use the signature to create a deterministic wallet
-        signer = new Wallet(Wallet.createRandom().privateKey); 
+        // Derive a stable Ethereum-compatible private key from the Stellar signature
+        // This ensures the user has the same XMTP identity every time they log in with this Stellar wallet
+        const signatureHash = keccak256(toUtf8Bytes(signResult.message_signature));
+        signer = new Wallet(signatureHash); 
       } else {
-        // Fallback for other wallets: create a random ephemeral identity for the session
-        signer = Wallet.createRandom();
+        // Fallback for other wallets: create a stable seed based on the address if signMessage isn't available
+        const fallbackSeed = keccak256(toUtf8Bytes("XMTP_STALLAR_SEED_" + walletAddress));
+        signer = new Wallet(fallbackSeed);
       }
 
       // Initialize XMTP Client
-      // Use 'production' or 'dev' environment
-      const xmtp = await Client.create(signer, { env: "production" });
+      // Use 'dev' environment as V2 production publishing is retired
+      const xmtp = await Client.create(signer, { env: "dev" });
       setClient(xmtp);
       
       const allConvs = await xmtp.conversations.list();
