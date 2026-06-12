@@ -6,7 +6,7 @@ import { signTransaction } from "../walletService";
 import { NETWORK, NETWORK_PASSPHRASE, CONTRACT_ID, SOROBAN_SERVER } from "../constants";
 import { recordActivity } from "../utils/activityService";
 import { useTheme } from "../context/ThemeContext";
-import { Check as CheckIcon, Copy as CopyIcon, Plus } from "lucide-react";
+import { Check as CheckIcon, Copy as CopyIcon, Plus, Sparkles, ImageIcon, Loader } from "lucide-react";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
 import "./MintPage.css";
 
@@ -63,6 +63,10 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
   const [copied, setCopied] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [localBalance, setLocalBalance] = useState(0);
+  const [mintMode, setMintMode] = useState("manual"); // 'manual' | 'ai'
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiImageUrl, setAiImageUrl] = useState("");
   const fileInputRef = useRef(null);
 
   const fetchBalance = useCallback(async () => {
@@ -93,8 +97,37 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
     if (!name) { setStatus("Please enter an NFT name."); setStatusType("warning"); return; }
     if (!walletType) { setStatus("Wallet not connected. Please reconnect."); setStatusType("warning"); return; }
     if (localBalance < MIN_BALANCE_REQUIRED) { setStatus(`Insufficient balance. Need at least ${MIN_BALANCE_REQUIRED} XLM.`); setStatusType("warning"); return; }
-    if (!file) { setStatus("Please select an image file to upload."); setStatusType("warning"); return; }
+    if (mintMode === "manual" && !file) { setStatus("Please select an image file to upload."); setStatusType("warning"); return; }
+    if (mintMode === "ai" && !aiImageUrl) { setStatus("Please generate an AI image first."); setStatusType("warning"); return; }
     setShowConfirmation(true);
+  };
+
+  const generateAIImage = async () => {
+    if (!aiPrompt.trim()) { setStatus("Please enter a description for AI."); setStatusType("warning"); return; }
+    setAiGenerating(true);
+    setStatus("AI is creating your masterpiece...");
+    setStatusType("info");
+    try {
+      // Pollinations.ai — completely free, no API key needed!
+      const encodedPrompt = encodeURIComponent(`${aiPrompt}, digital art, NFT, vibrant, high quality`);
+      const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${Date.now()}`;
+      // Pre-load to confirm image is ready
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = url;
+      });
+      setAiImageUrl(url);
+      setPreviewUrl(url);
+      setStatus("✨ AI image generated! Review and mint.");
+      setStatusType("success");
+    } catch (e) {
+      setStatus("AI generation failed. Try a different prompt.");
+      setStatusType("warning");
+    } finally {
+      setAiGenerating(false);
+    }
   };
 
   const confirmMint = async () => {
@@ -104,22 +137,21 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
     setStatusType("info");
 
     try {
-      if (!file) throw new Error("No file selected.");
+      if (mintMode === "manual" && !file) throw new Error("No file selected.");
 
-      // Diagnostic: confirm what walletType and NETWORK look like at runtime
-      console.log("---------------------------------------------------");
-      console.log(" STARTING MINT");
-      console.log("Contract:", CONTRACT_ID);
-      console.log(" Wallet:", walletAddress);
-      console.log(" walletType:", walletType);
-      console.log(" NETWORK constant:", NETWORK);        // should log "TESTNET"
-      console.log(" NETWORK_PASSPHRASE:", NETWORK_PASSPHRASE);
-      console.log("---------------------------------------------------");
-
-      // Step 1: Upload to IPFS
-      setStatus("Uploading image to IPFS...");
-      const cid = await uploadToPinata(file);
-      const tokenURI = `https://gateway.pinata.cloud/ipfs/${cid}`;
+      // Step 1: Get image URL
+      setStatus("Preparing image...");
+      let tokenURI;
+      if (mintMode === "ai" && aiImageUrl) {
+        // AI mode: use the generated image URL directly (no Pinata upload needed)
+        tokenURI = aiImageUrl;
+        setStatus("Using AI-generated image...");
+      } else {
+        // Manual mode: upload to IPFS via Pinata
+        setStatus("Uploading image to IPFS...");
+        const cid = await uploadToPinata(file);
+        tokenURI = `https://gateway.pinata.cloud/ipfs/${cid}`;
+      }
       console.log(" URI:", tokenURI);
       console.log(" Name:", name);
 
@@ -377,32 +409,81 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
                     placeholder="Describe your NFT..." value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} />
                 </div>
 
-                <div className="space-y-2">
-                  <label className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-700"} ml-1`}>Upload NFT Image</label>
-                  <div className={`border-2 border-dashed ${isDark ? "border-white/10 bg-black/20" : "border-gray-300 bg-white/50"} rounded-xl p-8 text-center hover:border-purple-500/50 transition-colors cursor-pointer`}
-                    onClick={() => fileInputRef.current?.click()}>
-                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          const selectedFile = e.target.files[0];
-                          const validation = validateFile(selectedFile);
-                          if (!validation.valid) { setStatus(validation.error); setStatusType("warning"); return; }
-                          setFile(selectedFile); setStatus("");
-                        }
-                      }} disabled={loading} />
-                    {file ? (
-                      <div className="text-green-400 font-medium flex items-center justify-center gap-2">
-                        <CheckIcon className="w-5 h-5" />{file.name}
-                      </div>
-                    ) : (
-                      <div className={isDark ? "text-gray-400" : "text-gray-500"}>
-                        <div className="mb-2 text-2xl">📂</div>
-                        <span className="text-sm">Click to upload image</span>
-                        <p className={`text-xs ${isDark ? "text-gray-600" : "text-gray-400"} mt-1`}>Max 5MB (JPG, PNG, GIF, WEBP)</p>
+                {/* Mode Tabs */}
+                <div className={`flex gap-2 p-1 rounded-xl ${isDark ? "bg-black/30" : "bg-gray-100"}`}>
+                  <button
+                    onClick={() => { setMintMode("manual"); setAiImageUrl(""); setPreviewUrl(""); }}
+                    className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm transition-all ${mintMode === "manual" ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow" : (isDark ? "text-gray-400" : "text-gray-500")}`}
+                  >
+                    <ImageIcon size={16} /> Manual Upload
+                  </button>
+                  <button
+                    onClick={() => { setMintMode("ai"); setFile(null); }}
+                    className={`flex-1 py-2 px-4 rounded-lg flex items-center justify-center gap-2 font-semibold text-sm transition-all ${mintMode === "ai" ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow" : (isDark ? "text-gray-400" : "text-gray-500")}`}
+                  >
+                    <Sparkles size={16} /> AI Generate ✨
+                  </button>
+                </div>
+
+                {mintMode === "ai" ? (
+                  <div className="space-y-3">
+                    <label className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-700"} ml-1`}>
+                      Describe your NFT to AI
+                    </label>
+                    <div className="flex gap-2">
+                      <input type="text"
+                        className={`flex-1 ${isDark ? "bg-black/20 border-white/10 text-white placeholder-gray-500" : "bg-white/50 border-gray-200 text-gray-900 placeholder-gray-400"} border rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500/50 transition-all`}
+                        placeholder='e.g. "Cyberpunk dragon on Stellar blockchain"'
+                        value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
+                        onKeyPress={e => e.key === "Enter" && generateAIImage()}
+                        disabled={loading || aiGenerating} />
+                      <button
+                        onClick={generateAIImage}
+                        disabled={loading || aiGenerating}
+                        className="px-5 py-3 rounded-xl bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                      >
+                        {aiGenerating ? <Loader size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                        {aiGenerating ? "Creating..." : "Generate"}
+                      </button>
+                    </div>
+                    {aiImageUrl && (
+                      <div className={`rounded-xl overflow-hidden border-2 border-purple-500/30`}>
+                        <img src={aiImageUrl} alt="AI Generated" className="w-full object-cover" />
+                        <div className="p-3 text-center text-sm text-green-400 font-semibold">
+                          ✅ AI image ready — enter a name above and click Mint!
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    <label className={`text-sm font-medium ${isDark ? "text-gray-400" : "text-gray-700"} ml-1`}>Upload NFT Image</label>
+                    <div className={`border-2 border-dashed ${isDark ? "border-white/10 bg-black/20" : "border-gray-300 bg-white/50"} rounded-xl p-8 text-center hover:border-purple-500/50 transition-colors cursor-pointer`}
+                      onClick={() => fileInputRef.current?.click()}>
+                      <input type="file" ref={fileInputRef} className="hidden" accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            const selectedFile = e.target.files[0];
+                            const validation = validateFile(selectedFile);
+                            if (!validation.valid) { setStatus(validation.error); setStatusType("warning"); return; }
+                            setFile(selectedFile); setStatus("");
+                          }
+                        }} disabled={loading} />
+                      {file ? (
+                        <div className="text-green-400 font-medium flex items-center justify-center gap-2">
+                          <CheckIcon className="w-5 h-5" />{file.name}
+                        </div>
+                      ) : (
+                        <div className={isDark ? "text-gray-400" : "text-gray-500"}>
+                          <div className="mb-2 text-2xl">📂</div>
+                          <span className="text-sm">Click to upload image</span>
+                          <p className={`text-xs ${isDark ? "text-gray-600" : "text-gray-400"} mt-1`}>Max 5MB (JPG, PNG, GIF, WEBP)</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
 
                 <button className="mint-btn-gradient w-full py-4 rounded-xl text-white font-bold text-lg mt-6 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                   onClick={handleMint} disabled={loading}>

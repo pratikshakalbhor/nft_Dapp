@@ -25,6 +25,7 @@ import { useWallet } from "../WalletContext";
 import { useTheme } from "../context/ThemeContext";
 import { fetchNFTById } from "../utils/soroban";
 import { shortenAddress } from "../utils";
+import AuctionTimer from "../components/AuctionTimer";
 
 const containerVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -59,11 +60,12 @@ export default function NFTDetailPage() {
 
   // Mock Price History Data
   const priceData = [
-    { name: "May 20", price: 5 },
-    { name: "May 25", price: 8 },
-    { name: "Jun 01", price: 7 },
-    { name: "Jun 05", price: 12 },
-    { name: "Jun 07", price: 10 },
+    { name: "Mon", price: 5, date: "2026-06-01" },
+    { name: "Tue", price: 8, date: "2026-06-02" },
+    { name: "Wed", price: 7, date: "2026-06-03" },
+    { name: "Thu", price: 12, date: "2026-06-04" },
+    { name: "Fri", price: 10, date: "2026-06-05" },
+    { name: "Sat", price: 15, date: "2026-06-06" },
   ];
 
   useEffect(() => {
@@ -163,6 +165,15 @@ export default function NFTDetailPage() {
     }
   };
 
+  const startAuction = async () => {
+    if (!walletAddress || !isOwner) return;
+    const nftRef = ref(db, `marketplace/nft_${id}`);
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    const newEnd = Date.now() + twentyFourHours;
+    await set(ref(db, `marketplace/nft_${id}/auctionEnd`), newEnd);
+    alert("Auction started/extended for 24 hours!");
+  };
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -246,19 +257,35 @@ export default function NFTDetailPage() {
              </h3>
              <div style={{ height: "200px", width: "100%", marginTop: "10px" }}>
                <ResponsiveContainer width="100%" height="100%">
-                 <AreaChart data={priceData}>
-                   <defs>
-                     <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
-                       <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
-                     </linearGradient>
-                   </defs>
-                   <Tooltip 
-                     contentStyle={{ background: isDark ? "#1e1e2d" : "#fff", border: "none", borderRadius: "8px", boxShadow: "0 10px 25px rgba(0,0,0,0.2)" }}
-                     itemStyle={{ color: "#8b5cf6", fontWeight: 700 }}
-                   />
-                   <Area type="monotone" dataKey="price" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" />
-                 </AreaChart>
+                  <AreaChart data={priceData}>
+                    <defs>
+                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#ec4899" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Tooltip 
+                      contentStyle={{ 
+                        background: isDark ? "rgba(30, 30, 45, 0.9)" : "rgba(255, 255, 255, 0.9)", 
+                        border: "1px solid rgba(255,255,255,0.1)", 
+                        borderRadius: "12px", 
+                        boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+                        backdropFilter: "blur(10px)"
+                      }}
+                      itemStyle={{ color: "#ec4899", fontWeight: 900, fontSize: "0.9rem" }}
+                      labelStyle={{ color: isDark ? "#94a3b8" : "#64748b", marginBottom: "4px", fontSize: "0.75rem", fontWeight: 700 }}
+                      formatter={(value) => [`${value} XLM`, "Price"]}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#ec4899" 
+                      strokeWidth={4} 
+                      fillOpacity={1} 
+                      fill="url(#colorPrice)" 
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
                </ResponsiveContainer>
              </div>
           </div>
@@ -320,24 +347,34 @@ export default function NFTDetailPage() {
                 <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#ec4899" }}>{fbData?.price || "---"} <span style={{ fontSize: "1.2rem", color: isDark ? "#fff" : "#000", opacity: 0.5 }}>{fbData?.currency || "XLM"}</span></div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#10b981", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>
-                   <Clock size={14} /> Ends In
+                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#10b981", marginBottom: "8px", display: "flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>
+                   <Clock size={14} /> Auction Ends In
                 </div>
-                <div style={{ fontSize: "1.1rem", fontWeight: 800 }}>23h 45m 12s</div>
+                {/* Default 24h timer if not set in Firebase */}
+                <AuctionTimer endTime={fbData?.auctionEnd || (Date.now() + 86400000)} isDark={isDark} />
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "12px" }}>
-              <button style={{ flex: 1, padding: "18px", borderRadius: "16px", background: "linear-gradient(135deg, #ec4899, #8b5cf6)", color: "#fff", border: "none", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 10px 20px rgba(236, 72, 153, 0.3)" }}>
-                Buy Now
-              </button>
-              {!isOwner && (
+            <div style={{ display: "flex", gap: "12px", flexDirection: isOwner ? "column" : "row" }}>
+              {isOwner ? (
                 <button 
-                  onClick={() => setShowOfferModal(true)}
-                  style={{ flex: 1, padding: "18px", borderRadius: "16px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: isDark ? "#fff" : "#000", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", fontWeight: 800, fontSize: "1rem", cursor: "pointer" }}
+                  onClick={startAuction}
+                  style={{ width: "100%", padding: "18px", borderRadius: "16px", background: "linear-gradient(135deg, #10b981, #3b82f6)", color: "#fff", border: "none", fontWeight: 800, fontSize: "1rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}
                 >
-                  Make Offer
+                  <Gavel size={20} /> Start/Extend 24h Auction
                 </button>
+              ) : (
+                <>
+                  <button style={{ flex: 1, padding: "18px", borderRadius: "16px", background: "linear-gradient(135deg, #ec4899, #8b5cf6)", color: "#fff", border: "none", fontWeight: 800, fontSize: "1rem", cursor: "pointer", boxShadow: "0 10px 20px rgba(236, 72, 153, 0.3)" }}>
+                    Buy Now
+                  </button>
+                  <button 
+                    onClick={() => setShowOfferModal(true)}
+                    style={{ flex: 1, padding: "18px", borderRadius: "16px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: isDark ? "#fff" : "#000", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", fontWeight: 800, fontSize: "1rem", cursor: "pointer" }}
+                  >
+                    Make Offer
+                  </button>
+                </>
               )}
             </div>
             
