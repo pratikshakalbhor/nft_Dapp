@@ -16,6 +16,7 @@ import ProfilePage from "./components/ProfilePage";
 import { errorHandler } from "./utils/errorHandler";
 import DashboardPage from "./pages/DashboardPage";
 import NFTDetailPage from "./pages/NFTDetailPage";
+import ChatPage from "./pages/ChatPage";
 
 import { useTheme } from "./context/ThemeContext";
 
@@ -336,6 +337,16 @@ function App() {
                   walletAddress ? (
                     <div className="pages-container">
                       <NFTDetailPage />
+                    </div>
+                  ) : <Navigate to="/login" replace />
+                }
+              />
+              <Route
+                path="/chat"
+                element={
+                  walletAddress ? (
+                    <div className="pages-container">
+                      <ChatPage />
                     </div>
                   ) : <Navigate to="/login" replace />
                 }
