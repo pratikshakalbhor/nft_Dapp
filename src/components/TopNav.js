@@ -104,6 +104,7 @@ const TopNav = ({ walletAddress, onDisconnect }) => {
     { to: "/for-sale", icon: <TagIcon size={18} />, label: "Sales" },
     { to: "/my-nfts", icon: <Briefcase size={18} />, label: "Inventory" },
     { to: "/profile", icon: <User size={18} />, label: "Profile" },
+    { to: "/chat", icon: <MessageSquare size={18} />, label: "Chat" },
   ];
 
   const handleLogout = () => {

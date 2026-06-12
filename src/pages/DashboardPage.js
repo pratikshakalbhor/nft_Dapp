@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import * as StellarSdk from "@stellar/stellar-sdk";
-import { HORIZON_URL } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 
 import { 
   ShoppingBag, 
-  Zap, 
   Images, 
   Plus, 
   ArrowUpRight, 
@@ -15,47 +12,26 @@ import {
   Activity,
   ChevronRight
 } from "lucide-react";
+import { listenToGlobalActivities } from "../utils/activityService";
 
 const shortenAddr = (addr) => {
   if (!addr || typeof addr !== "string") return "";
   return `${addr.slice(0, 6)}...${addr.slice(-5)}`;
 };
 
-const getTxType = (tx) => {
-  try {
-    const envelope = StellarSdk.TransactionBuilder.fromXDR(
-      tx.envelope_xdr, StellarSdk.Networks.TESTNET
-    );
-    const op = envelope.operations?.[0];
-    if (op?.type === "invokeHostFunction") {
-      return { icon: <ShoppingBag size={16} />, label: "Marketplace Action", color: "#ec4899" };
-    }
-  } catch { }
-  return { icon: <Zap size={16} />, label: "Network Transfer", color: "#6366f1" };
-};
+
 
 export default function DashboardPage({ walletAddress, balance, nfts }) {
   const navigate = useNavigate();
   const { isDark } = useTheme();
-  const [recentTxs, setRecentTxs] = useState([]);
-  const [txLoading, setTxLoading] = useState(true);
+  const [globalActivities, setGlobalActivities] = useState([]);
 
   useEffect(() => {
     if (!walletAddress) return;
-    const fetchTxs = async () => {
-      try {
-        setTxLoading(true);
-        const server = new StellarSdk.Horizon.Server(HORIZON_URL);
-        const { records } = await server.transactions()
-          .forAccount(walletAddress).limit(5).order("desc").call();
-        setRecentTxs(records);
-      } catch (e) {
-        console.error("Dashboard tx error:", e);
-      } finally {
-        setTxLoading(false);
-      }
-    };
-    fetchTxs();
+    const unsubscribe = listenToGlobalActivities((list) => {
+      setGlobalActivities(list);
+    });
+    return () => unsubscribe();
   }, [walletAddress]);
 
   const glassStyle = {
@@ -180,38 +156,43 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
             </div>
         </motion.div>
 
-        {/* Recent Activity */}
+        {/* Platform-wide Activity Feed */}
         <motion.div variants={itemVariants} style={glassStyle}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
-                <h3 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Recent Activity</h3>
+                <h3 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Platform Activity</h3>
                 <Activity size={20} style={{ opacity: 0.3 }} />
             </div>
-            {txLoading ? (
-                <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>Syncing with blockchain...</div>
-            ) : recentTxs.length === 0 ? (
-                <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>No recent transactions found.</div>
+            {globalActivities.length === 0 ? (
+                <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>Waiting for activity...</div>
             ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {recentTxs.map(tx => {
-                        const type = getTxType(tx);
-                        return (
-                            <div key={tx.id} style={{ 
-                                padding: "12px", borderRadius: "16px", 
-                                background: isDark ? "rgba(255,255,255,0.02)" : "#f8fafc",
-                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
-                                display: "flex", alignItems: "center", gap: "12px"
+                    {globalActivities.map(activity => (
+                        <div key={activity.id} style={{ 
+                            padding: "16px", borderRadius: "16px", 
+                            background: isDark ? "rgba(255,255,255,0.02)" : "#f8fafc",
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                            display: "flex", alignItems: "flex-start", gap: "12px"
+                        }}>
+                            <div style={{ 
+                                padding: "10px", 
+                                background: `${activity.color || '#ec4899'}15`, 
+                                color: activity.color || '#ec4899', 
+                                borderRadius: "12px" 
                             }}>
-                                <div style={{ color: type.color }}>{type.icon}</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 700, fontSize: "0.85rem" }}>{type.label}</div>
-                                    <div style={{ fontSize: "0.65rem", opacity: 0.5, fontFamily: "monospace" }}>{tx.id.slice(0, 16)}...</div>
-                                </div>
-                                <div style={{ fontSize: "0.7rem", opacity: 0.5 }}>
-                                    {new Date(tx.created_at).toLocaleDateString()}
+                                {activity.type === 'nft_minted' ? <Images size={16} /> : <TrendingUp size={16} />}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 800, fontSize: "0.9rem" }}>{activity.title}</div>
+                                <div style={{ fontSize: "0.8rem", opacity: 0.7, margin: "2px 0" }}>{activity.description}</div>
+                                <div style={{ fontSize: "0.7rem", color: "#ec4899", fontWeight: 700 }}>
+                                    By {shortenAddr(activity.address)}
                                 </div>
                             </div>
-                        );
-                    })}
+                            <div style={{ fontSize: "0.65rem", opacity: 0.4 }}>
+                                {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
         </motion.div>
