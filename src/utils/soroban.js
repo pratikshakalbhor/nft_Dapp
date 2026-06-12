@@ -260,3 +260,39 @@ export const fetchAllNFTs = async (walletAddress) => {
     return [];
   }
 };
+
+/**
+ * Fetch a single NFT by ID from contract
+ * @param {string} walletAddress - Any valid address for simulation
+ * @param {number} id - The NFT ID
+ * @returns {Promise<{id, owner, name, image}|null>}
+ */
+export const fetchNFTById = async (walletAddress, id) => {
+  if (!walletAddress || !id) return null;
+  const contract = new Contract(CONTRACT_ID);
+  try {
+    const ownerResult = await performReadOnlyCall(
+      walletAddress,
+      contract.call("get_owner", nativeToScVal(id, { type: "u32" }))
+    );
+    const ownerAddress = ownerResult
+      ? new Address(ownerResult).toString()
+      : null;
+    if (!ownerAddress) return null;
+
+    const [name, image] = await Promise.all([
+      performReadOnlyCall(
+        walletAddress,
+        contract.call("get_name", nativeToScVal(id, { type: "u32" }))
+      ),
+      performReadOnlyCall(
+        walletAddress,
+        contract.call("get_image", nativeToScVal(id, { type: "u32" }))
+      ),
+    ]);
+    return { id, owner: ownerAddress, name, image };
+  } catch (error) {
+    console.error(`Error fetching NFT ${id}:`, error);
+    return null;
+  }
+};

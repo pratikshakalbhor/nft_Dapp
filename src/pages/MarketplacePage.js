@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { ref, set, onValue, runTransaction } from "firebase/database";
@@ -11,19 +12,14 @@ import { shortenAddress } from "../utils";
 import { fetchAllNFTs } from "../utils/soroban";
 import { recordActivity } from "../utils/activityService";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
-import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2 } from "lucide-react";
+import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search } from "lucide-react";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
-
-const isCertificate = (name) =>
-  name && (
-    name.toLowerCase().includes("certificate") ||
-    name.toLowerCase().includes("job cert")
-  );
 
 export default function MarketplacePage({ walletAddress, initialFilter = "all", title = "Marketplace", hideTabs = false, hideStats = false }) {
   const { walletType } = useWallet();
   const { isDark } = useTheme();
+  const navigate = useNavigate();
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [blockchainNFTs, setBlockchainNFTs] = useState([]); // raw from chain
@@ -38,6 +34,8 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   const [sortBy, setSortBy] = useState("newest");
   const [statusMsg, setStatusMsg] = useState("");
   const [confirmBuy, setConfirmBuy] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [likes, setLikes] = useState({});
 
   // ── Load blockchain NFTs ──────────────────────────────────────────────────
   useEffect(() => {
@@ -57,6 +55,20 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!walletAddress) return;
+    const likesRef = ref(db, `likes`);
+    const unsub = onValue(likesRef, (snap) => {
+      const data = snap.val() || {};
+      const userLikes = {};
+      Object.entries(data).forEach(([nftId, bidders]) => {
+        if (bidders[walletAddress]) userLikes[`nft_${nftId}`] = true;
+      });
+      setLikes(userLikes);
+    });
+    return () => unsub();
+  }, [walletAddress]);
 
   // ── Merge blockchain + Firebase into final listings ───────────────────────
   const listings = (() => {
@@ -78,7 +90,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         price: fb?.price || "10",
         listed: fb?.listed || false,
         sold: fb?.sold || false,
-        isCert: isCertificate(nft.name),
+        isCert: false,
       });
     });
 
@@ -99,7 +111,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           price: fb.price || "10",
           listed: fb.listed || false,
           sold: fb.sold || false,
-          isCert: isCertificate(fb.name),
+          isCert: false,
         });
       }
     });
@@ -110,9 +122,13 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   // ── Filtered listings ─────────────────────────────────────────────────────
   const filteredListings = listings
     .filter(n => {
+      const matchesSearch = n.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          n.ownerFull.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
+
       if (filter === "sale") return n.listed && !n.sold;
       if (filter === "mine") return n.ownerFull === walletAddress;
-      if (filter === "cert") return n.isCert;
+      if (filter === "fav") return likes[n.nftKey];
       return true;
     })
     .sort((a, b) => {
@@ -122,7 +138,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
     });
 
   const listedCount = listings.filter(n => n.listed && !n.sold).length;
-  const certCount = listings.filter(n => n.isCert).length;
+
   const myCount = listings.filter(n => n.ownerFull === walletAddress).length;
 
   // ── Save listing to Firebase ──────────────────────────────────────────────
@@ -318,7 +334,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       <style>{`
         .market-card { background:${isDark ? "rgba(15,15,30,0.7)" : "rgba(255,255,255,0.9)"}; border:1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}; border-radius:20px; overflow:hidden; transition:all 0.3s cubic-bezier(0.4,0,0.2,1); backdrop-filter:blur(20px); }
         .market-card:hover { border-color:rgba(139,92,246,0.4); box-shadow:0 20px 40px rgba(139,92,246,0.15); transform:translateY(-6px); }
-        .market-card.cert-card { border-color:rgba(245,158,11,0.35)!important; background:${isDark ? "rgba(20,15,5,0.8)" : "rgba(255,253,240,0.95)"}!important; }
+
         .buy-btn { background:linear-gradient(135deg,#059669,#047857); color:white; border:none; border-radius:12px; padding:10px 20px; font-weight:700; font-size:0.9rem; cursor:pointer; width:100%; transition:all 0.3s; }
         .buy-btn:hover:not(:disabled) { box-shadow:0 8px 25px rgba(5,150,105,0.4); transform:translateY(-1px); }
         .buy-btn:disabled { opacity:0.5; cursor:not-allowed; }
@@ -327,12 +343,12 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         .unlist-btn { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:12px; padding:10px 20px; font-weight:700; font-size:0.9rem; cursor:pointer; width:100%; margin-top:8px; }
         .for-sale-badge { position:absolute; top:12px; left:12px; background:linear-gradient(135deg,#8b5cf6,#3b82f6); color:white; font-size:0.7rem; font-weight:800; padding:4px 10px; border-radius:8px; }
         .own-badge { position:absolute; top:12px; right:12px; background:rgba(16,185,129,0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); font-size:0.7rem; font-weight:800; padding:4px 10px; border-radius:8px; }
-        .cert-badge { position:absolute; top:12px; left:12px; background:linear-gradient(135deg,#f59e0b,#d97706); color:white; font-size:0.7rem; font-weight:800; padding:4px 10px; border-radius:8px; }
+
         .overlay-modal { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.75); backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; }
         .modal-card { background:${isDark ? "rgba(13,17,28,0.98)" : "#fff"}; border:1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}; border-radius:24px; padding:36px; max-width:420px; width:90%; color:${isDark ? "#fff" : "#1a1a2e"}; }
         @keyframes spin { to{transform:rotate(360deg)} }
         @keyframes glow-pulse { 0%,100%{opacity:0.7} 50%{opacity:1} }
-        .cert-glow { animation:glow-pulse 2s ease-in-out infinite; }
+
       `}</style>
 
       <motion.div className="max-w-7xl mx-auto" variants={containerVariants} initial="hidden" animate="visible">
@@ -340,7 +356,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         {/* Header */}
         <motion.div variants={itemVariants} style={{ textAlign: "center", marginBottom: "40px" }}>
           <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.8rem)", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, color: isDark ? "#fff" : "#1a1a2e" }}>
-            {filter === "all" ? "Marketplace" : filter === "sale" ? "For Sale" : filter === "mine" ? "My NFTs" : "Certificates"}
+            {filter === "all" ? "Marketplace" : filter === "sale" ? "For Sale" : "My NFTs"}
           </h1>
           <p style={{ color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", marginTop: "4px" }}>Buy and sell NFTs on Stellar blockchain</p>
           <div style={{ width: "48px", height: "3px", background: "linear-gradient(135deg,#8b5cf6,#3b82f6)", borderRadius: "2px", margin: "8px auto 0" }} />
@@ -350,7 +366,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                 { label: "Total NFTs", value: listings.length },
                 { label: "For Sale", value: listedCount, color: "#34d399" },
                 { label: "My NFTs", value: myCount, color: "#60a5fa" },
-                { label: "Certificates", value: certCount, color: "#f59e0b" },
+
               ].map(stat => (
                 <div key={stat.label} style={{ textAlign: "center" }}>
                   <div style={{ fontSize: "1.5rem", fontWeight: 800, color: stat.color || "#a78bfa" }}>{stat.value}</div>
@@ -361,6 +377,33 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           )}
         </motion.div>
 
+        {/* Search Bar */}
+        <motion.div variants={itemVariants} style={{ marginBottom: "24px", position: "relative" }}>
+          <div style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>
+            <Search size={20} />
+          </div>
+          <input 
+            type="text" 
+            placeholder="Search NFTs by name or owner address..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "16px 16px 16px 48px",
+              borderRadius: "16px",
+              background: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.8)",
+              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)",
+              color: isDark ? "#fff" : "#1a1a2e",
+              fontSize: "1rem",
+              outline: "none",
+              boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.2)" : "0 4px 20px rgba(0,0,0,0.02)",
+              transition: "all 0.3s"
+            }}
+            onFocus={(e) => e.target.style.borderColor = "#ec4899"}
+            onBlur={(e) => e.target.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+          />
+        </motion.div>
+
         {/* Tabs */}
         {!hideTabs && (
           <motion.div variants={itemVariants} style={{ marginBottom: "20px" }}>
@@ -368,8 +411,8 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
               {[
                 { key: "all", label: "All NFTs", count: listings.length },
                 { key: "sale", label: "For Sale", count: listedCount },
+                { key: "fav", label: "Favorites", count: Object.keys(likes).length },
                 { key: "mine", label: "My NFTs", count: myCount },
-                { key: "cert", label: "Certificates", count: certCount },
               ].map(tab => (
                 <button key={tab.key} onClick={() => setFilter(tab.key)} style={{
                   flex: 1, padding: "10px 6px", borderRadius: "10px", border: "none", cursor: "pointer",
@@ -421,10 +464,10 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         {!loadingNFTs && filteredListings.length === 0 && (
           <motion.div variants={itemVariants} style={{ textAlign: "center", padding: "80px 20px", background: isDark ? "rgba(15,15,30,0.5)" : "rgba(255,255,255,0.8)", border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)", borderRadius: "20px" }}>
             <h3 style={{ color: isDark ? "#94a3b8" : "#475569", fontSize: "1.3rem", fontWeight: 700, marginBottom: "8px" }}>
-              {filter === "sale" ? "No NFTs Listed for Sale" : filter === "cert" ? "No Certificates Yet" : filter === "mine" ? "You don't own any NFTs yet" : "No NFTs Found"}
+              {filter === "sale" ? "No NFTs Listed for Sale" : filter === "mine" ? "You don't own any NFTs yet" : "No NFTs Found"}
             </h3>
             <p style={{ color: isDark ? "#475569" : "#64748b", fontSize: "0.9rem" }}>
-              {filter === "mine" ? "Mint an NFT or complete a job to earn certificates!" : filter === "sale" ? "List your NFTs from Gallery → List for Sale" : filter === "cert" ? "Complete a job to earn NFT certificates!" : "Mint some NFTs first!"}
+              {filter === "mine" ? "Mint an NFT or complete a job to view them here!" : filter === "sale" ? "List your NFTs from Gallery → List for Sale" : "Mint some NFTs first!"}
             </p>
           </motion.div>
         )}
@@ -433,23 +476,23 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         {!loadingNFTs && (
           <motion.div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "24px" }} variants={containerVariants}>
             {filteredListings.map(nft => (
-              <motion.div key={nft.nftKey} className={`market-card${nft.isCert ? " cert-card" : ""}`} variants={itemVariants}>
-
-                {/* Image */}
-                <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden", background: nft.isCert ? (isDark ? "linear-gradient(135deg,#1a1000,#2d1f00)" : "linear-gradient(135deg,#fffbeb,#fef3c7)") : (isDark ? "#0a0a15" : "#f1f5f9") }}>
-                  {nft.image && !nft.isCert ? (
+              <motion.div 
+                key={nft.nftKey} 
+                className="market-card" 
+                variants={itemVariants}
+                onClick={() => navigate(`/nft/${nft.nftId}`)}
+                style={{ cursor: "pointer" }}
+              >
+                <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden", background: isDark ? "#0a0a15" : "#f1f5f9" }}>
+                  {nft.image ? (
                     <img src={nft.image} alt={nft.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
                       onMouseEnter={e => e.target.style.transform = "scale(1.08)"}
                       onMouseLeave={e => e.target.style.transform = "scale(1)"}
                       onError={e => { e.target.style.display = "none"; }} />
-                  ) : nft.isCert ? (
-                    <div className="cert-glow" style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px" }}>
-                      <div style={{ fontSize: "4rem" }}></div>
-                      <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#f59e0b", textAlign: "center", padding: "0 16px" }}>{nft.name}</div>
-                      <div style={{ fontSize: "0.7rem", color: "rgba(245,158,11,0.6)", fontWeight: 600 }}>STELLAR BLOCKCHAIN</div>
-                    </div>
                   ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem" }}></div>
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "3rem", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}>
+                      🖼️
+                    </div>
                   )}
 
                   {/* SOLD overlay */}
@@ -459,8 +502,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                     </div>
                   )}
 
-                  {nft.isCert ? <span className="cert-badge">Certificate</span>
-                    : nft.listed && !nft.sold ? <span className="for-sale-badge" style={{background: "#3b82f6"}}>For Sale</span>
+                  {nft.listed && !nft.sold ? <span className="for-sale-badge" style={{background: "#3b82f6"}}>For Sale</span>
                       : null}
                   {nft.ownerFull === walletAddress && (
                     <span className="own-badge">
@@ -490,19 +532,20 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                     nft.sold ? (
                       <div style={{ padding: "10px", textAlign: "center", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)", fontSize: "0.85rem" }}> You sold this NFT</div>
                     ) : !nft.listed ? (
-                      <button className="list-btn" style={nft.isCert ? { background: "rgba(245,158,11,0.15)", borderColor: "rgba(245,158,11,0.3)", color: "#f59e0b" } : { display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }} onClick={() => handleOpenListModal(nft)}>
+                      <button className="list-btn" style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }} 
+                        onClick={(e) => { e.stopPropagation(); handleOpenListModal(nft); }}>
                         <Tag size={14} /> List for Sale
                       </button>
                     ) : (
                       <>
-                        <button className="list-btn" onClick={() => handleOpenListModal(nft)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}><Edit2 size={14}/> Edit Price</button>
-                        <button className="unlist-btn" onClick={() => handleUnlist(nft)} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}><Trash2 size={14}/> Remove</button>
+                        <button className="list-btn" onClick={(e) => { e.stopPropagation(); handleOpenListModal(nft); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}><Edit2 size={14}/> Edit Price</button>
+                        <button className="unlist-btn" onClick={(e) => { e.stopPropagation(); handleUnlist(nft); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}><Trash2 size={14}/> Remove</button>
                       </>
                     )
                   ) : nft.sold ? (
                     <button disabled style={{ width: "100%", padding: "10px", borderRadius: "12px", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", fontWeight: 600, cursor: "not-allowed" }}> Already Sold</button>
                   ) : nft.listed ? (
-                    <button className="buy-btn" onClick={() => handleBuy(nft)} disabled={buyingId === nft.id} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
+                    <button className="buy-btn" onClick={(e) => { e.stopPropagation(); handleBuy(nft); }} disabled={buyingId === nft.id} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"6px" }}>
                       {buyingId === nft.id ? (
                         <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
                           <span style={{ width: "14px", height: "14px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
@@ -585,7 +628,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
               </div>
               <div style={{ display: "flex", gap: "12px" }}>
                 <button onClick={() => { setShowListModal(false); setSelectedNft(null); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: isDark ? "#94a3b8" : "#475569", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
-                <button onClick={confirmListing} style={{ flex: 1, padding: "12px", borderRadius: "12px", background: selectedNft.isCert ? "linear-gradient(135deg,#f59e0b,#d97706)" : "linear-gradient(135deg,#8b5cf6,#3b82f6)", border: "none", color: "white", fontWeight: 700, cursor: "pointer" }}>
+                <button onClick={confirmListing} style={{ flex: 1, padding: "12px", borderRadius: "12px", background: "linear-gradient(135deg,#8b5cf6,#3b82f6)", border: "none", color: "white", fontWeight: 700, cursor: "pointer" }}>
                   {selectedNft.listed ? "Update Price" : "List Now"}
                 </button>
               </div>

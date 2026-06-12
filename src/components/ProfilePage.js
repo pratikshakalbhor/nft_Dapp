@@ -4,8 +4,6 @@ import { useWallet } from "../WalletContext";
 import { ref, onValue } from "firebase/database";
 import { db } from "../firebase";
 import { 
-  Copy, 
-  Check, 
   Wallet, 
   LayoutGrid, 
   History, 
@@ -13,10 +11,12 @@ import {
   Image as ImageIcon,
   Tag,
   ShoppingBag,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  TrendingUp
 } from "lucide-react";
 import { shortenAddress } from "../utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const containerVariants = {
   hidden: { opacity: 0 },
@@ -55,6 +55,9 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
   const [purchasedCount, setPurchasedCount] = useState(0);
   const [marketHistory, setMarketHistory] = useState([]);
   const [xlmBalance, setXlmBalance] = useState("0");
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   const avatar = generateAvatar(walletAddress);
 
@@ -74,11 +77,13 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
       const history = [];
       let sCount = 0;
       let pCount = 0;
+      let earnings = 0;
 
       Object.values(data).forEach(item => {
         // Sold items
         if (item.sold && item.previousOwner === walletAddress) {
           sCount++;
+          earnings += parseFloat(item.price || 0);
           history.push({ ...item, actionType: "sold", date: item.soldAt });
         }
         // Purchased items
@@ -88,12 +93,25 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
         }
       });
 
+      setTotalEarnings(earnings);
       setSoldCount(sCount);
       setPurchasedCount(pCount);
       setMarketHistory(history.sort((a, b) => b.date - a.date));
     });
 
-    return () => unsubscribe();
+    // 3. Fetch Follower Counts
+    const followerRef = ref(db, `followers/${walletAddress}`);
+    const followingRef = ref(db, `following/${walletAddress}`);
+    
+    const unsubFollowers = onValue(followerRef, (snap) => {
+      setFollowersCount(snap.val() ? Object.keys(snap.val()).length : 0);
+    });
+    
+    const unsubFollowing = onValue(followingRef, (snap) => {
+      setFollowingCount(snap.val() ? Object.keys(snap.val()).length : 0);
+    });
+
+    return () => { unsubscribe(); unsubFollowers(); unsubFollowing(); };
   }, [walletAddress, account]);
 
   const handleCopy = () => {
@@ -136,13 +154,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
     minHeight: "120px",
   };
 
-
-
-  const reputationScore = Math.min(100, (propNfts?.length || 0) * 10);
-
-  const certificates = (propNfts || []).filter(n => n && (n.name?.toLowerCase().includes("certificate") || n.name?.toLowerCase().includes("job cert"))) || [];
-  const regularNFTs = (propNfts || []).filter(n => n && (!n.name?.toLowerCase().includes("certificate") && !n.name?.toLowerCase().includes("job cert"))) || [];
-
   if (!walletAddress) return <div style={{ padding: "40px", textAlign: "center" }}>Please connect wallet</div>;
 
   return (
@@ -166,8 +177,36 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
         }}>
           {avatar.initials}
         </div>
-        <div style={{ fontFamily: "monospace", fontSize: "0.85rem", color: isDark ? "#a78bfa" : "#6366f1" }}>
-          {walletAddress?.slice(0,6)}...{walletAddress?.slice(-4)}
+        <div 
+          onClick={handleCopy}
+          style={{ 
+            fontFamily: "monospace", 
+            fontSize: "0.85rem", 
+            color: isDark ? "#a78bfa" : "#6366f1", 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "center", 
+            gap: "6px",
+            cursor: "pointer",
+            position: "relative"
+          }}
+        >
+          {shortenAddress(walletAddress)}
+          <ShieldCheck size={14} color="#3b82f6" fill="rgba(59, 130, 246, 0.1)" />
+          {copied && (
+            <motion.span 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ position: "absolute", top: "-20px", fontSize: "0.7rem", background: "#10b981", color: "#fff", padding: "2px 6px", borderRadius: "4px" }}
+            >
+              Copied!
+            </motion.span>
+          )}
+        </div>
+        
+        <div style={{ display: "flex", justifyContent: "center", gap: "20px", marginTop: "12px", fontSize: "0.9rem", fontWeight: 700 }}>
+           <div><span style={{ color: isDark ? "#fff" : "#000" }}>{followersCount}</span> <span style={{ opacity: 0.5 }}>Followers</span></div>
+           <div><span style={{ color: isDark ? "#fff" : "#000" }}>{followingCount}</span> <span style={{ opacity: 0.5 }}>Following</span></div>
         </div>
         <a 
           href={`https://stellar.expert/explorer/testnet/account/${walletAddress}`}
@@ -185,314 +224,119 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
             background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
             borderRadius: "20px",
             border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
-            transition: "all 0.2s"
           }}
         >
-          <ExternalLink size={12} />
-          View on Stellar Explorer
+          <ExternalLink size={12} /> View on Explorer
         </a>
       </div>
 
-      {/* Header Section */}
-      <motion.div variants={itemVariants} style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontSize: "2rem", fontWeight: 800, margin: "0 0 8px", color: isDark ? "#fff" : "#0f172a" }}>Profile</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <div style={{
-            background: isDark ? "rgba(99, 102, 241, 0.1)" : "#eff6ff",
-            color: isDark ? "#818cf8" : "#3b82f6",
-            padding: "6px 12px",
-            borderRadius: "8px",
-            fontFamily: "monospace",
-            fontSize: "0.9rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px"
-          }}>
-            <Wallet size={16} />
-            {shortenAddress(walletAddress)}
-          </div>
-          <button 
-            onClick={handleCopy}
-            style={{
-              background: "transparent",
-              border: isDark ? "1px solid rgba(255,255,255,0.2)" : "1px solid #cbd5e1",
-              borderRadius: "8px",
-              padding: "6px",
-              cursor: "pointer",
-              color: isDark ? "#cbd5e1" : "#64748b",
-              display: "flex",
-              alignItems: "center"
-            }}
-            title="Copy Address"
-          >
-            {copied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Stats Grid */}
-      <motion.div variants={itemVariants} style={{ 
-        display: "grid", 
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-        gap: "16px", 
-        marginBottom: "40px" 
-      }}>
-        {/* Balance */}
-        <div style={statCardStyle}>
-          <div style={{ 
-            width: "48px", height: "48px", borderRadius: "50%", 
-            background: isDark ? "rgba(99, 102, 241, 0.15)" : "#eff6ff",
-            color: "#6366f1", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" 
-          }}>
-            <CreditCard size={24} />
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#fff" : "#0f172a" }}>
-            {xlmBalance}
-          </div>
-          <div style={{ fontSize: "0.8rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", marginTop: "4px" }}>
-            XLM Balance
-          </div>
-        </div>
-
-        {/* Owned */}
-        <div style={statCardStyle}>
-          <div style={{ 
-            width: "48px", height: "48px", borderRadius: "50%", 
-            background: isDark ? "rgba(16, 185, 129, 0.15)" : "#ecfdf5",
-            color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" 
-          }}>
-            <ImageIcon size={24} />
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#fff" : "#0f172a" }}>
-            {propNfts ? propNfts.length : 0}
-          </div>
-          <div style={{ fontSize: "0.8rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", marginTop: "4px" }}>
-            NFTs Owned
-          </div>
-        </div>
-
-        {/* Sold */}
-        <div style={statCardStyle}>
-          <div style={{ 
-            width: "48px", height: "48px", borderRadius: "50%", 
-            background: isDark ? "rgba(245, 158, 11, 0.15)" : "#fffbeb",
-            color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" 
-          }}>
-            <Tag size={24} />
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#fff" : "#0f172a" }}>
-            {soldCount}
-          </div>
-          <div style={{ fontSize: "0.8rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", marginTop: "4px" }}>
-            NFTs Sold
-          </div>
-        </div>
-
-        {/* Purchased */}
-        <div style={statCardStyle}>
-          <div style={{ 
-            width: "48px", height: "48px", borderRadius: "50%", 
-            background: isDark ? "rgba(236, 72, 153, 0.15)" : "#fdf2f8",
-            color: "#ec4899", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "12px" 
-          }}>
-            <ShoppingBag size={24} />
-          </div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: isDark ? "#fff" : "#0f172a" }}>
-            {purchasedCount}
-          </div>
-          <div style={{ fontSize: "0.8rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)", marginTop: "4px" }}>
-            NFTs Purchased
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Tabs */}
-      <motion.div variants={itemVariants} style={{ borderBottom: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid #e2e8f0", marginBottom: "24px" }}>
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button style={tabButtonStyle("overview")} onClick={() => setActiveTab("overview")}>
-            <LayoutGrid size={16} /> Overview
-          </button>
-          <button style={tabButtonStyle("nfts")} onClick={() => setActiveTab("nfts")}>
-            <ImageIcon size={16} /> My NFTs
-          </button>
-          <button style={tabButtonStyle("history")} onClick={() => setActiveTab("history")}>
-            <History size={16} /> History
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Tab Content */}
-      <div style={{ minHeight: "300px" }}>
-        
-        {/* OVERVIEW TAB */}
-        {activeTab === "overview" && (
-          <motion.div variants={itemVariants} style={{ color: isDark ? "#94a3b8" : "#64748b" }}>
-            <h3 style={{ color: isDark ? "#fff" : "#0f172a", marginTop: 0 }}>Wallet Details</h3>
-            <div style={{ 
-              background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc",
-              padding: "20px", 
-              borderRadius: "12px", 
-              border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #e2e8f0" 
-            }}>
-              <p style={{ margin: "0 0 10px" }}><strong>Network:</strong> Testnet</p>
-              <p style={{ margin: "0 0 10px" }}><strong>Sequence Number:</strong> {account?.sequence || "Loading..."}</p>
-              <p style={{ margin: 0 }}><strong>Subentry Count:</strong> {account?.subentry_count || 0}</p>
-            </div>
-
-            {/* Reputation Score */}
-            <div style={{
-              marginTop: "20px",
-              background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc",
-              padding: "20px", borderRadius: "12px",
-              border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #e2e8f0",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-                <span style={{ fontWeight: 700, color: isDark ? "#fff" : "#0f172a" }}>Reputation Score</span>
-                <span style={{ fontWeight: 800, color: "#f59e0b", fontSize: "1.1rem" }}>{reputationScore}/100</span>
-              </div>
-              <div style={{ height: "8px", borderRadius: "4px", background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${reputationScore}%`, background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: "4px", transition: "width 1s ease" }} />
-              </div>
-              <div style={{ display: "flex", gap: "16px", marginTop: "10px", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.78rem", color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                  {propNfts?.length || 0} NFTs owned
-                </span>
-              </div>
-            </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '40px' }}>
+        {[
+          { label: "NFTs Owned", value: propNfts?.length || 0, icon: <ImageIcon size={20} />, color: "#8b5cf6" },
+          { label: "Purchased", value: purchasedCount, icon: <ShoppingBag size={20} />, color: "#3b82f6" },
+          { label: "Total Sold", value: soldCount, icon: <Tag size={20} />, color: "#ec4899" },
+          { label: "Earnings", value: `${totalEarnings} XLM`, icon: <TrendingUp size={20} />, color: "#10b981" },
+          { label: "Balance", value: `${xlmBalance} XLM`, icon: <Wallet size={20} />, color: "#f59e0b" },
+        ].map((stat, i) => (
+          <motion.div key={i} variants={itemVariants} style={statCardStyle}>
+            <div style={{ color: stat.color, marginBottom: '8px' }}>{stat.icon}</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stat.value}</div>
+            <div style={{ fontSize: '0.75rem', opacity: 0.6, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stat.label}</div>
           </motion.div>
-        )}
-
-        {/* MY NFTS TAB */}
-        {activeTab === "nfts" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "20px" }}>
-            
-            {/* Certificates */}
-            {certificates.length > 0 && (
-              <div style={{ gridColumn: "1/-1", marginBottom: "16px" }}>
-                <h4 style={{ color: "#f59e0b", marginBottom: "12px", fontSize: "0.85rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  Certificates ({certificates.length})
-                </h4>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
-                  {certificates.map((nft, i) => (
-                    <div key={i} style={{
-                      background: isDark ? "rgba(245,158,11,0.1)" : "rgba(245,158,11,0.05)",
-                      border: "1px solid rgba(245,158,11,0.3)",
-                      borderRadius: "12px", padding: "16px", textAlign: "center",
-                    }}>
-                      <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>🏆</div>
-                      <div style={{ fontWeight: 700, color: "#f59e0b", fontSize: "0.85rem" }}>{nft.name}</div>
-                      <div style={{ fontSize: "0.7rem", color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", marginTop: "4px" }}>Stellar Blockchain</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Regular NFTs */}
-            {regularNFTs.length > 0 ? (
-              regularNFTs.map((nft) => (
-                <motion.div key={nft.id} variants={itemVariants} style={{ 
-                  background: isDark ? "rgba(30, 41, 59, 0.4)" : "#fff",
-                  border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  transition: "transform 0.2s",
-                }}>
-                  <div style={{ 
-                    height: "200px", 
-                    background: isDark ? "#0f172a" : "#f1f5f9",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)",
-                    fontSize: "3rem"
-                  }}>
-                    {nft.image ? (
-                        <img src={nft.image} alt={nft.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    ) : "🖼️"}
-                  </div>
-                  <div style={{ padding: "16px" }}>
-                    <h4 style={{ margin: "0 0 4px", color: isDark ? "#fff" : "#0f172a", fontSize: "1rem" }}>{nft.name || `NFT #${nft?.id || "???"}`}</h4>
-                    <span style={{ fontSize: "0.75rem", color: "#6366f1", background: "rgba(99, 102, 241, 0.1)", padding: "2px 8px", borderRadius: "4px" }}>
-                      ID: {(nft.id || "").toString().slice(0,8)}...
-                    </span>
-                  </div>
-                </motion.div>
-              ))
-            ) : certificates.length === 0 ? (
-              <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px", opacity: 0.6 }}>
-                No NFTs found in this wallet.
-              </div>
-            ) : null}
-          </motion.div>
-        )}
-
-        {/* HISTORY TAB */}
-        {activeTab === "history" && (
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {marketHistory.length > 0 ? (
-              marketHistory.map((item, i) => (
-                <motion.div key={i} variants={itemVariants} style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  padding: "16px",
-                  background: isDark ? "rgba(255,255,255,0.03)" : "#fff",
-                  border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid #e2e8f0",
-                  borderRadius: "12px"
-                }}>
-                  <div style={{ 
-                    padding: "10px", 
-                    borderRadius: "50%", 
-                    background: item.actionType === "bought" ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
-                    color: item.actionType === "bought" ? "#10b981" : "#f59e0b",
-                    marginRight: "16px"
-                  }}>
-                    {item.actionType === "bought" ? <ShoppingBag size={20} /> : <Tag size={20} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: isDark ? "#fff" : "#0f172a" }}>
-                      {item.actionType === "bought" ? "Purchased NFT" : "Sold NFT"}
-                    </div>
-                    <div style={{ fontSize: "0.85rem", color: isDark ? "#94a3b8" : "#64748b" }}>
-                      {item.name} for <strong>{item.price} XLM</strong>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: "0.8rem", color: isDark ? "#64748b" : "#94a3b8" }}>
-                    {new Date(item.soldAt).toLocaleDateString()}
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <div style={{ textAlign: "center", padding: "40px", opacity: 0.6 }}>
-                No transaction history found.
-              </div>
-            )}
-          </motion.div>
-        )}
+        ))}
       </div>
+
+      <div style={{ display: "flex", gap: "24px", borderBottom: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", marginBottom: "24px" }}>
+        <button onClick={() => setActiveTab("overview")} style={tabButtonStyle("overview")}><LayoutGrid size={18} /> Overview</button>
+        <button onClick={() => setActiveTab("history")} style={tabButtonStyle("history")}><History size={18} /> Activity</button>
+        <button onClick={() => setActiveTab("wallet")} style={tabButtonStyle("wallet")}><CreditCard size={18} /> Wallet</button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {activeTab === "overview" && (
+          <motion.div key="overview" layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+            <h3 style={{ marginBottom: "16px", fontSize: "1.1rem", fontWeight: 700 }}>Featured Assets</h3>
+            {propNfts?.length === 0 ? (
+              <div style={{ padding: "40px", textAlign: "center", background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: "16px", border: "1px dashed rgba(255,255,255,0.1)" }}>
+                No NFTs found in your wallet.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "16px" }}>
+                {propNfts.map((nft, i) => (
+                  <motion.div 
+                    key={i} 
+                    style={{ 
+                      borderRadius: "16px", overflow: "hidden", 
+                      background: isDark ? "rgba(255,255,255,0.04)" : "#fff",
+                      border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)"
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <div style={{ aspectRatio: "1/1", overflow: "hidden" }}>
+                      <img src={nft.image} alt={nft.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                    <div style={{ padding: "12px" }}>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 700 }}>{nft.name}</div>
+                      <div style={{ fontSize: "0.7rem", opacity: 0.5 }}># {nft.id}</div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === "history" && (
+          <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {marketHistory.length === 0 ? (
+              <div style={{ padding: "40px", textAlign: "center", opacity: 0.5 }}>No recent activity.</div>
+            ) : (
+              marketHistory.map((h, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: "16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                    <div style={{ 
+                      width: "40px", height: "40px", borderRadius: "10px", 
+                      background: h.actionType === "sold" ? "rgba(16, 185, 129, 0.1)" : "rgba(59, 130, 246, 0.1)",
+                      color: h.actionType === "sold" ? "#10b981" : "#3b82f6",
+                      display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>
+                      {h.actionType === "sold" ? <ShoppingBag size={20} /> : <Tag size={20} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700 }}>{h.name}</div>
+                      <div style={{ fontSize: "0.75rem", opacity: 0.5 }}>{h.actionType === "sold" ? "Sold" : "Purchased"} • {new Date(h.date).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "1rem", fontWeight: 800, color: h.actionType === "sold" ? "#10b981" : "inherit" }}>{h.actionType === "sold" ? "+" : "-"}{h.price} XLM</div>
+                    <div style={{ fontSize: "0.7rem", opacity: 0.5 }}>Confirmed</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === "wallet" && (
+          <motion.div key="wallet" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+             <div style={{ background: "linear-gradient(135deg, #6366f1, #8b5cf6)", borderRadius: "24px", padding: "32px", color: "#fff", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: "-50px", right: "-50px", width: "200px", height: "200px", background: "rgba(255,255,255,0.1)", borderRadius: "50%" }} />
+                <div style={{ position: "relative", zIndex: 1 }}>
+                   <div style={{ fontSize: "0.9rem", opacity: 0.8, marginBottom: "8px" }}>Total Balance</div>
+                   <div style={{ fontSize: "2.5rem", fontWeight: 900 }}>{xlmBalance} XLM</div>
+                   <div style={{ marginTop: "24px", fontSize: "0.8rem", letterSpacing: "1px", opacity: 0.7 }}>{walletAddress}</div>
+                </div>
+             </div>
+             <div style={{ marginTop: "24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <button style={{ padding: "16px", borderRadius: "16px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none", color: "inherit", fontWeight: 700, cursor: "not-allowed" }}>Send (Coming Soon)</button>
+                <button style={{ padding: "16px", borderRadius: "16px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none", color: "inherit", fontWeight: 700, cursor: "not-allowed" }}>Receive (Coming Soon)</button>
+             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 };
-
-// ── Exported Icons (used by MintPage, PaymentPage) ──────────────────────────
-export const CheckIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-  </svg>
-);
-
-export const CopyIcon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-  </svg>
-);
-
-export const XLMIcon = ({ className, style }) => (
-  <svg className={className} style={style} viewBox="0 0 24 24" fill="currentColor">
-    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-    <path d="M12 7v10M7 12h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
 
 export default ProfilePage;

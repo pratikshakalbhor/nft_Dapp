@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { HORIZON_URL } from "../constants";
 import { useTheme } from "../context/ThemeContext";
+
 import { 
   ShoppingBag, 
   Zap, 
@@ -11,7 +12,6 @@ import {
   Plus, 
   ArrowUpRight, 
   TrendingUp, 
-  Award, 
   Activity,
   ChevronRight
 } from "lucide-react";
@@ -81,13 +81,6 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
         value: `${balance} XLM`, 
         color: "#10b981",
         sub: "Available balance"
-    },
-    { 
-        icon: <Award size={20} />, 
-        label: "Certificates", 
-        value: nfts?.filter(n => n.isCert).length || 0, 
-        color: "#f59e0b",
-        sub: "Verified credentials"
     }
   ];
 

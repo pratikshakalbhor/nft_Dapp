@@ -17,6 +17,7 @@ import ProfilePage from "./components/ProfilePage";
 import { errorHandler } from "./utils/errorHandler";
 import NotificationPanel from "./components/NotificationPanel";
 import DashboardPage from "./pages/DashboardPage";
+import NFTDetailPage from "./pages/NFTDetailPage";
 
 import { useTheme } from "./context/ThemeContext";
 
@@ -424,20 +425,13 @@ function App() {
                   ) : <Navigate to="/login" replace />
                 }
               />
+
               <Route
-                path="/certificates"
+                path="/nft/:id"
                 element={
                   walletAddress ? (
                     <div className="pages-container">
-                      <MarketplacePage 
-                        walletAddress={walletAddress} 
-                        nfts={nfts} 
-                        server={server} 
-                        initialFilter="cert" 
-                        title="Certificates" 
-                        hideTabs={true}
-                        hideStats={true}
-                      />
+                      <NFTDetailPage />
                     </div>
                   ) : <Navigate to="/login" replace />
                 }

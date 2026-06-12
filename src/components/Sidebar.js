@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from 'react'; // Sidebar with hot reload fix
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
@@ -12,9 +12,8 @@ import {
   Moon,
   LogOut,
   Wallet,
-  Tag,
+  Tag as TagIcon,
   Briefcase,
-  Award,
   LayoutDashboard
 } from "lucide-react";
 
@@ -103,9 +102,8 @@ const Sidebar = ({ walletAddress, onDisconnect, isOpen, setIsOpen }) => {
     { to: "/gallery", icon: <Images size={18} />, label: "Collection" },
     { to: "/mint", icon: <ImagePlus size={18} />, label: "Mint NFT" },
     { to: "/marketplace", icon: <Store size={18} />, label: "Marketplace" },
-    { to: "/for-sale", icon: <Tag size={18} />, label: "For Sale" },
+    { to: "/for-sale", icon: <TagIcon size={18} />, label: "For Sale" },
     { to: "/my-nfts", icon: <Briefcase size={18} />, label: "My NFTs" },
-    { to: "/certificates", icon: <Award size={18} />, label: "Certificates" },
     { to: "/profile", icon: <User size={18} />, label: "Profile" },
   ];
 

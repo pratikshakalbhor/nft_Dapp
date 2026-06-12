@@ -4,3 +4,4 @@ export const shortenAddress = (addr) => {
   }
   return typeof addr === "string" ? addr : "";
 };
+

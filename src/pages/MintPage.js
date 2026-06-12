@@ -6,7 +6,8 @@ import { signTransaction } from "../walletService";
 import { NETWORK, NETWORK_PASSPHRASE, CONTRACT_ID, SOROBAN_SERVER } from "../constants";
 import { recordActivity } from "../utils/activityService";
 import { useTheme } from "../context/ThemeContext";
-import { containerVariants, itemVariants, CheckIcon, CopyIcon } from "../components/ProfilePage";
+import { Check as CheckIcon, Copy as CopyIcon, Plus } from "lucide-react";
+import { containerVariants, itemVariants } from "../components/ProfilePage";
 import "./MintPage.css";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -409,9 +410,7 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
                     <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /><span>Minting on Stellar...</span></>
                   ) : (
                     <><span>Mint NFT</span>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-                      </svg>
+                      <Plus size={20} />
                     </>
                   )}
                 </button>
