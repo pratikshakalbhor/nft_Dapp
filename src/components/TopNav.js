@@ -15,7 +15,8 @@ import {
   Briefcase,
   LayoutDashboard,
   Menu,
-  X
+  X,
+  MessageSquare
 } from "lucide-react";
 import NotificationPanel from "./NotificationPanel";
 
