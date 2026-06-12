@@ -1,7 +1,5 @@
 import React from 'react';
 import { Buffer } from 'buffer';
-window.Buffer = window.Buffer || Buffer;
-
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
@@ -9,6 +7,8 @@ import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
 import { WalletProvider } from './WalletContext';
 import { ThemeProvider } from './context/ThemeContext';
+
+window.Buffer = window.Buffer || Buffer;
 
 // Prevent irrelevant MetaMask errors from crashing the React app during development
 const isMetaMaskError = (msg) => 
