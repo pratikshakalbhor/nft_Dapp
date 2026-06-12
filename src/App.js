@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu } from "lucide-react";
 import "./App.css";
 import * as StellarSdk from "@stellar/stellar-sdk";
-import Sidebar from "./components/Sidebar";
+import TopNav from "./components/TopNav";
 import { HORIZON_URL } from "./constants";
 import Background from "./components/Background";
 import { fetchNFTs } from "./utils/soroban";
@@ -15,7 +14,6 @@ import { useWallet } from "./WalletContext";
 import WalletModal from "./WalletModal";
 import ProfilePage from "./components/ProfilePage";
 import { errorHandler } from "./utils/errorHandler";
-import NotificationPanel from "./components/NotificationPanel";
 import DashboardPage from "./pages/DashboardPage";
 import NFTDetailPage from "./pages/NFTDetailPage";
 
@@ -35,7 +33,6 @@ function App() {
   const { isDark } = useTheme();
   const [nfts, setNfts] = useState([]);
   const [accountDetails, setAccountDetails] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const server = useMemo(
     () => new StellarSdk.Horizon.Server(HORIZON_URL),
@@ -87,13 +84,6 @@ function App() {
           flex: 1;
           width: 100%;
           min-height: 100vh;
-          transition: margin-left 0.3s ease;
-        }
-        @media (min-width: 768px) {
-          .main-content.with-sidebar {
-            margin-left: 240px;
-            width: calc(100% - 240px);
-          }
         }
       `}</style>
       <div style={{ position: "relative", zIndex: 2, display: "flex", width: "100%", minHeight: "100vh" }}>
@@ -127,100 +117,14 @@ function App() {
           )}
 
           {walletAddress && (
-            <Sidebar
+            <TopNav
               walletAddress={walletAddress}
               onDisconnect={() => disconnectWallet()}
-              isOpen={mobileMenuOpen}
-              setIsOpen={setMobileMenuOpen}
             />
           )}
 
-          {/* Top Navigation Bar */}
-          {walletAddress && (
-            <div style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "60px",
-              background: isDark ? "rgba(10, 10, 26, 0.7)" : "rgba(255, 255, 255, 0.7)",
-              backdropFilter: "blur(20px) saturate(160%)",
-              borderBottom: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.05)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "0 24px",
-              gap: "8px",
-              zIndex: 100,
-              boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.03)",
-            }}>
-
-              {/* Left — Logo */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}>
-                <div style={{
-                  width: "28px", height: "28px",
-                  background: "linear-gradient(135deg, #ec4899, #8b5cf6)",
-                  borderRadius: "8px",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "14px",
-                }}>🎨</div>
-                <span style={{
-                  color: isDark ? "#fff" : "#1a1a2e",
-                  fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  fontWeight: 800,
-                  fontSize: "0.9rem",
-                }}>NFT Hub</span>
-              </div>
-
-              {/* Right — Icons + Wallet + Hamburger */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-              }}>
-                {/* Notification */}
-                <NotificationPanel walletAddress={walletAddress} />
-
-                {/* Wallet Address */}
-                <div className="wallet-info-badge" style={{
-                  padding: "4px 10px",
-                  background: "rgba(236,72,153,0.15)",
-                  border: "1px solid rgba(236,72,153,0.3)",
-                  borderRadius: "10px",
-                  fontSize: "0.72rem",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: isDark ? "#f472b6" : "#be185d",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}>
-                  <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }} />
-                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-3)}
-                </div>
-
-                {/* Hamburger (Mobile Only) */}
-                <div
-                  className="mobile-menu-btn"
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  style={{
-                    width: "34px", height: "34px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "pointer",
-                    fontSize: "20px",
-                  }}>
-                  <Menu size={24} color={isDark ? "#fff" : "#1a1a2e"} />
-                </div>
-              </div>
-            </div>
-          )}
-
-          <main className={`main-content ${walletAddress ? 'with-sidebar' : ''}`}
-            style={{ paddingTop: walletAddress ? "70px" : "0" }}
+          <main className="main-content"
+            style={{ paddingTop: walletAddress ? "64px" : "0", flex: 1, width: "100%" }}
           >
             <AnimatePresence mode="wait">
               <motion.div
