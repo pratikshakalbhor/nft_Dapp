@@ -12,7 +12,8 @@ import { shortenAddress } from "../utils";
 import { fetchAllNFTs } from "../utils/soroban";
 import { recordActivity } from "../utils/activityService";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
-import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search } from "lucide-react";
+import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search, SlidersHorizontal } from "lucide-react";
+import SkeletonCard from "../components/SkeletonCard";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 
@@ -37,6 +38,12 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   const [confirmBuy, setConfirmBuy] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [likes, setLikes] = useState({});
+  const [category, setCategory] = useState("all");
+  const [priceMin, setPriceMin] = useState("");
+  const [priceMax, setPriceMax] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const CATEGORIES = ["all", "Art", "3D", "Music", "Photography", "Gaming"];
 
   // ── Load blockchain NFTs ──────────────────────────────────────────────────
   useEffect(() => {
@@ -131,6 +138,17 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       if (filter === "sale") return n.listed && !n.sold;
       if (filter === "mine") return n.ownerFull === walletAddress;
       if (filter === "fav") return likes[n.nftKey];
+      return true;
+    })
+    .filter(n => {
+      // Category filter — stored in nft.category or derived from nft.name
+      if (category !== "all") {
+        const nftCat = (n.category || "").toLowerCase();
+        if (!nftCat.includes(category.toLowerCase())) return false;
+      }
+      // Price range filter
+      if (priceMin !== "" && parseFloat(n.price) < parseFloat(priceMin)) return false;
+      if (priceMax !== "" && parseFloat(n.price) > parseFloat(priceMax)) return false;
       return true;
     })
     .sort((a, b) => {
@@ -434,18 +452,62 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           </motion.div>
         )}
 
-        {/* Sort + Refresh */}
-        <motion.div variants={itemVariants} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", gap: "12px" }}>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", borderRadius: "10px", padding: "8px 16px", color: isDark ? "#e2e8f0" : "#1e293b", fontSize: "0.85rem", cursor: "pointer" }}>
-            <option value="newest">Newest First</option>
-            <option value="price-low">Price: Low → High</option>
-            <option value="price-high">Price: High → Low</option>
-          </select>
+        {/* Sort + Filters + Refresh */}
+        <motion.div variants={itemVariants} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flex: 1 }}>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", borderRadius: "10px", padding: "8px 16px", color: isDark ? "#e2e8f0" : "#1e293b", fontSize: "0.85rem", cursor: "pointer" }}>
+              <option value="newest">Newest First</option>
+              <option value="price-low">Price: Low → High</option>
+              <option value="price-high">Price: High → Low</option>
+            </select>
+            <button onClick={() => setShowFilters(v => !v)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: showFilters ? "linear-gradient(135deg,#7c3aed,#4f46e5)" : (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)"), border: "none", borderRadius: "10px", color: showFilters ? "#fff" : (isDark ? "#a78bfa" : "#6d28d9"), cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>
+              <SlidersHorizontal size={14} /> Filters
+            </button>
+          </div>
           <button onClick={() => { setLoadingNFTs(true); fetchAllNFTs(walletAddress).then(setBlockchainNFTs).finally(() => setLoadingNFTs(false)); }}
             style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 16px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", borderRadius: "10px", color: isDark ? "#a78bfa" : "#6d28d9", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600 }}>
             <RefreshCw size={14} className={loadingNFTs ? "animate-spin" : ""} /> Refresh
           </button>
         </motion.div>
+
+        {/* Advanced Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+              style={{ marginBottom: "16px", padding: "20px", borderRadius: "16px", background: isDark ? "rgba(255,255,255,0.03)" : "#f8fafc", border: isDark ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.06)" }}>
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.8rem", opacity: 0.6, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>Category</div>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {CATEGORIES.map(cat => (
+                    <button key={cat} onClick={() => setCategory(cat)} style={{
+                      padding: "6px 16px", borderRadius: "20px", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.8rem",
+                      background: category === cat ? "linear-gradient(135deg, #ec4899, #8b5cf6)" : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
+                      color: category === cat ? "#fff" : (isDark ? "#94a3b8" : "#64748b"), transition: "all 0.2s"
+                    }}>
+                      {cat === "all" ? "All" : cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: "0.8rem", opacity: 0.6, marginBottom: "10px", textTransform: "uppercase", letterSpacing: "1px" }}>Price Range</div>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <input type="number" placeholder="Min" value={priceMin} onChange={e => setPriceMin(e.target.value)}
+                    style={{ width: "100px", padding: "8px 12px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: "inherit", outline: "none" }} />
+                  <span style={{ opacity: 0.5 }}>–</span>
+                  <input type="number" placeholder="Max" value={priceMax} onChange={e => setPriceMax(e.target.value)}
+                    style={{ width: "100px", padding: "8px 12px", borderRadius: "10px", background: isDark ? "rgba(255,255,255,0.05)" : "#fff", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: "inherit", outline: "none" }} />
+                  {(priceMin || priceMax || category !== "all") && (
+                    <button onClick={() => { setPriceMin(""); setPriceMax(""); setCategory("all"); }}
+                      style={{ padding: "8px 14px", borderRadius: "10px", background: "rgba(239,68,68,0.1)", color: "#f87171", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "0.8rem" }}>
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Status */}
         <AnimatePresence>
@@ -457,11 +519,10 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           )}
         </AnimatePresence>
 
-        {/* Loading */}
+        {/* Loading: Skeleton Cards */}
         {loadingNFTs && (
-          <div style={{ textAlign: "center", padding: "60px 20px" }}>
-            <div style={{ width: "40px", height: "40px", border: "3px solid rgba(99,102,241,0.2)", borderTop: "3px solid #6366f1", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
-            <p style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>Loading NFTs from blockchain...</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "24px" }}>
+            {[1, 2, 3, 4, 5, 6].map(i => <SkeletonCard key={i} />)}
           </div>
         )}
 
