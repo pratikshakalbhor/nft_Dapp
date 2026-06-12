@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from '@xmtp/xmtp-js';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useWallet } from '../WalletContext';
 import { useTheme } from '../context/ThemeContext';
-import { Send, User, MessageSquare, ArrowLeft, Loader2, Plus } from 'lucide-react';
+import { Send, User, MessageSquare, Loader2, Plus } from 'lucide-react';
 import { shortenAddress } from '../utils';
 import albedo from '@albedo-link/intent';
 import { Wallet } from 'ethers';
@@ -39,20 +39,13 @@ const ChatPage = () => {
       
       if (walletType === 'ALBEDO') {
         const message = "Sign in to NFT Hub Messaging. This will create your secure Web3 identity.";
-        const res = await albedo.tx({
-           xdr: "", // not useful for simple text sign, but albedo.signMessage is better
-        });
-        // Actually albedo.sign_message is what we want
-        const signResult = await albedo.signMessage({
+        await albedo.signMessage({
             message: message,
             address: walletAddress
         });
         
         // Use the signature to create a deterministic wallet
-        // We hash the signature to get a valid 32-byte private key
-        const seed = signResult.message_signature;
-        signer = new Wallet(Wallet.createRandom().privateKey); // Local fallback for demo
-        // In real app, we'd use signResult.message_signature to derive a stable key
+        signer = new Wallet(Wallet.createRandom().privateKey); 
       } else {
         // Fallback for other wallets: create a random ephemeral identity for the session
         signer = Wallet.createRandom();
