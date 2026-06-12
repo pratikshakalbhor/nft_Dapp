@@ -11,10 +11,10 @@ export const WalletProvider = ({ children }) => {
   const [walletType, setWalletType] = useState('');
   const [isModalOpen, setModalOpen] = useState(false);
 
-  // Restore session — sessionStorage only (clears on tab/browser close)
+  // Restore session — localStorage (auto-connect)
   useEffect(() => {
-    const savedWalletsStr = sessionStorage.getItem('connectedWallets');
-    const savedActiveAddress = sessionStorage.getItem('walletAddress');
+    const savedWalletsStr = localStorage.getItem('connectedWallets');
+    const savedActiveAddress = localStorage.getItem('walletAddress');
 
     if (savedWalletsStr) {
       try {
@@ -35,22 +35,22 @@ export const WalletProvider = ({ children }) => {
         console.error("Failed to parse wallet state", e);
       }
     }
-
-    // Clear any old localStorage data (migration)
-    localStorage.removeItem('connectedWallets');
-    localStorage.removeItem('walletAddress');
-    localStorage.removeItem('walletType');
   }, []);
 
-  // Persist to sessionStorage only
+  // Persist to localStorage
   useEffect(() => {
-    sessionStorage.setItem('connectedWallets', JSON.stringify(connectedWallets));
-    if (walletAddress) {
-      sessionStorage.setItem('walletAddress', walletAddress);
-      sessionStorage.setItem('walletType', walletType);
+    if (connectedWallets.length > 0) {
+      localStorage.setItem('connectedWallets', JSON.stringify(connectedWallets));
     } else {
-      sessionStorage.removeItem('walletAddress');
-      sessionStorage.removeItem('walletType');
+      localStorage.removeItem('connectedWallets');
+    }
+    
+    if (walletAddress) {
+      localStorage.setItem('walletAddress', walletAddress);
+      localStorage.setItem('walletType', walletType);
+    } else {
+      localStorage.removeItem('walletAddress');
+      localStorage.removeItem('walletType');
     }
   }, [connectedWallets, walletAddress, walletType]);
 
@@ -113,7 +113,7 @@ export const WalletProvider = ({ children }) => {
         //  Full clear
         setWalletAddress('');
         setWalletType('');
-        sessionStorage.clear();
+        localStorage.clear();
       }
     }
   };

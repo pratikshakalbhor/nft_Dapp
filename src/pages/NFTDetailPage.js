@@ -317,7 +317,7 @@ export default function NFTDetailPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "24px" }}>
               <div>
                 <div style={{ fontSize: "0.9rem", fontWeight: 600, opacity: 0.6, marginBottom: "4px" }}>Current Price</div>
-                <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#ec4899" }}>{fbData?.price || "---"} <span style={{ fontSize: "1.2rem", color: isDark ? "#fff" : "#000", opacity: 0.5 }}>XLM</span></div>
+                <div style={{ fontSize: "2.5rem", fontWeight: 900, color: "#ec4899" }}>{fbData?.price || "---"} <span style={{ fontSize: "1.2rem", color: isDark ? "#fff" : "#000", opacity: 0.5 }}>{fbData?.currency || "XLM"}</span></div>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#10b981", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px", justifyContent: "flex-end" }}>

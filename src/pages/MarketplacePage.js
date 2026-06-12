@@ -29,6 +29,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   const [successTx, setSuccessTx] = useState(null);
   const [showListModal, setShowListModal] = useState(false);
   const [listPrice, setListPrice] = useState("10");
+  const [listCurrency, setListCurrency] = useState("XLM");
   const [selectedNft, setSelectedNft] = useState(null);
   const [filter, setFilter] = useState(initialFilter);
   const [sortBy, setSortBy] = useState("newest");
@@ -88,6 +89,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         ownerFull: fb?.ownerFull || nft.owner,
         owner: fb?.ownerFull ? shortenAddress(fb.ownerFull) : shortenAddress(nft.owner),
         price: fb?.price || "10",
+        currency: fb?.currency || "XLM",
         listed: fb?.listed || false,
         sold: fb?.sold || false,
         isCert: false,
@@ -143,12 +145,13 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
 
   // ── Save listing to Firebase ──────────────────────────────────────────────
   const saveToFirebase = async (nft, price) => {
-    const listingRef = ref(db, `marketplace/${nft.nftKey}`);
-    await set(listingRef, {
+    const marketRef = ref(db, `marketplace/${selectedNft.nftKey}`);
+    await set(marketRef, {
       nftKey: nft.nftKey,
       name: nft.name,
       image: nft.image || "",
       price: price,
+      currency: listCurrency,
       ownerFull: walletAddress,
       owner: shortenAddress(walletAddress),
       listed: true,
@@ -222,6 +225,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
             name: nft.name,
             image: nft.image || "",
             price: nft.price,
+            currency: nft.currency,
             ownerFull: walletAddress,       // ← new owner
             owner: shortenAddress(walletAddress),
             listed: false,
@@ -252,7 +256,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       await recordActivity(walletAddress, {
         type: "nft_purchased",
         title: "NFT Purchased",
-        description: `Purchased ${nft.name} for ${nft.price} XLM`,
+        description: `Purchased ${nft.name} for ${nft.price} ${nft.currency || "XLM"}`,
         color: "#60a5fa"
       });
 
@@ -260,11 +264,11 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       await recordActivity(nft.ownerFull, {
         type: "nft_sold",
         title: "NFT Sold",
-        description: `Sold ${nft.name} for ${nft.price} XLM to ${shortenAddress(walletAddress)}`,
+        description: `Sold ${nft.name} for ${nft.price} ${nft.currency || "XLM"} to ${shortenAddress(walletAddress)}`,
         color: "#a78bfa"
       });
 
-      setSuccessTx({ hash: response.hash, nftName: nft.name, price: nft.price });
+      setSuccessTx({ hash: response.hash, nftName: nft.name, price: nft.price, currency: nft.currency });
       setStatusMsg("");
 
     } catch (e) {
@@ -288,6 +292,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   const handleOpenListModal = (nft) => {
     setSelectedNft(nft);
     setListPrice(nft.price || "10");
+    setListCurrency(nft.currency || "XLM");
     setShowListModal(true);
   };
 
@@ -303,7 +308,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       await recordActivity(walletAddress, {
         type: "nft_listed",
         title: "NFT Listed",
-        description: `Listed ${selectedNft.name} for ${listPrice} XLM`,
+        description: `Listed ${selectedNft.name} for ${listPrice} ${listCurrency}`,
         color: "#fbbf24"
       });
 
@@ -516,7 +521,9 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                   <h3 style={{ color: isDark ? "white" : "#1a1a2e", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "1rem", marginBottom: "8px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{nft.name}</h3>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                     {nft.listed && !nft.sold ? (
-                      <span style={{ background: "rgba(139,92,246,0.2)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: "10px", padding: "6px 12px", color: "#a78bfa", fontFamily: "'JetBrains Mono', monospace", fontWeight:700 }}>{nft.price} XLM</span>
+                      <div style={{ padding: "4px 10px", borderRadius: "10px", background: "linear-gradient(135deg, #7c3aed, #4f46e5)", color: "#fff", fontSize: "0.9rem", fontWeight: 900 }}>
+                        {nft.price} {nft.currency || "XLM"}
+                      </div>
                     ) : (
                       <span style={{ fontSize: "0.8rem", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)" }}>
                         {nft.sold
@@ -551,7 +558,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                           <span style={{ width: "14px", height: "14px", border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite", display: "inline-block" }} />
                           Buying...
                         </span>
-                      ) : <><ShoppingCart size={16}/> Buy for {nft.price} XLM</>}
+                      ) : <><ShoppingCart size={16}/> Buy for {nft.price} {nft.currency || "XLM"}</>}
                     </button>
                   ) : (
                     <button disabled style={{ width: "100%", padding: "10px", borderRadius: "12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#475569", fontWeight: 600, cursor: "not-allowed" }}>Not for Sale</button>
@@ -572,7 +579,8 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
               <div style={{ padding: "16px", background: isDark ? "rgba(99,102,241,0.1)" : "rgba(99,102,241,0.06)", borderRadius: "12px", marginBottom: "16px", border: "1px solid rgba(99,102,241,0.2)" }}>
                 <p style={{ margin: "0 0 8px", fontWeight: 700 }}>{confirmBuy.name}</p>
                 <p style={{ margin: "0 0 6px", fontSize: "0.8rem", opacity: 0.6 }}>Seller: {confirmBuy.owner}</p>
-                <p style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800, color: "#34d399" }}>{confirmBuy.price} XLM</p>
+                <p style={{ margin: 0, fontSize: "0.6rem", opacity: 0.5, textTransform: "uppercase" }}>Price</p>
+                <p style={{ margin: 0, fontWeight: 900, color: "#ec4899", fontSize: "1.1rem" }}>{confirmBuy.price} <span style={{ fontSize: "0.7rem", opacity: 0.8 }}>{confirmBuy.currency || "XLM"}</span></p>
               </div>
               <p style={{ fontSize: "0.78rem", opacity: 0.5, textAlign: "center", marginBottom: "20px" }}>
                 XLM sent to seller. NFT ownership transfers instantly in Marketplace.
@@ -593,7 +601,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
             <motion.div className="modal-card" initial={{ scale: 0.8 }} animate={{ scale: 1 }} exit={{ scale: 0.8 }} style={{ textAlign: "center" }}>
               <h2 style={{ fontSize: "1.5rem", fontWeight: 800, marginBottom: "8px" }}>Purchase Successful!</h2>
               <p style={{ color: isDark ? "#94a3b8" : "#475569", marginBottom: "16px" }}>
-                You bought <strong style={{ color: "#a78bfa" }}>{successTx.nftName}</strong> for <strong style={{ color: "#34d399" }}>{successTx.price} XLM</strong>
+                You bought <strong style={{ color: "#a78bfa" }}>{successTx.nftName}</strong> for <strong style={{ color: "#34d399" }}>{successTx.price} {successTx.currency || "XLM"}</strong>
               </p>
               <p style={{ fontSize: "0.8rem", color: "#34d399", marginBottom: "16px" }}>
                  NFT ownership transferred! Check "My NFTs" tab.
@@ -622,9 +630,23 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                 <strong style={{ color: selectedNft.isCert ? "#f59e0b" : "#a78bfa" }}>{selectedNft.name}</strong>
               </p>
               <div style={{ marginBottom: "20px" }}>
-                <label style={{ color: isDark ? "#94a3b8" : "#64748b", fontSize: "0.85rem", display: "block", marginBottom: "8px" }}>Price in XLM</label>
-                <input type="number" value={listPrice} onChange={e => setListPrice(e.target.value)} placeholder="e.g. 10" min="0.1" step="0.1"
-                  style={{ width: "100%", padding: "12px 16px", borderRadius: "12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.02)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: isDark ? "white" : "#1a1a2e", fontSize: "1rem", outline: "none", boxSizing: "border-box" }} />
+                  {/* Price Row */}
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: "block", fontSize: "0.75rem", opacity: 0.6, marginBottom: "8px", fontWeight: 700 }}>Price</label>
+                      <input type="number" value={listPrice} onChange={e => setListPrice(e.target.value)}
+                        style={{ width: "100%", padding: "14px", borderRadius: "14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", border: "none", color: "inherit", fontWeight: 800, fontSize: "1.2rem", outline: "none" }} />
+                    </div>
+                    <div style={{ width: "120px" }}>
+                      <label style={{ display: "block", fontSize: "0.75rem", opacity: 0.6, marginBottom: "8px", fontWeight: 700 }}>Currency</label>
+                      <select value={listCurrency} onChange={e => setListCurrency(e.target.value)}
+                        style={{ width: "100%", padding: "14px", borderRadius: "14px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)", border: "none", color: "inherit", fontWeight: 800, fontSize: "1rem", outline: "none", cursor: "pointer", height: "100%" }}>
+                        <option value="XLM">XLM</option>
+                        <option value="USDC">USDC</option>
+                        <option value="AQUA">AQUA</option>
+                      </select>
+                    </div>
+                  </div>
               </div>
               <div style={{ display: "flex", gap: "12px" }}>
                 <button onClick={() => { setShowListModal(false); setSelectedNft(null); }} style={{ flex: 1, padding: "12px", borderRadius: "12px", background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: isDark ? "#94a3b8" : "#475569", cursor: "pointer", fontWeight: 600 }}>Cancel</button>
