@@ -14,8 +14,7 @@ import {
   TrendingDown,
   Activity,
   ChevronRight,
-  DollarSign,
-  Percent
+  DollarSign
 } from "lucide-react";
 import { listenToGlobalActivities } from "../utils/activityService";
 

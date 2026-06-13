@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Client } from '@xmtp/xmtp-js';
+import { Client } from '@xmtp/browser-sdk';
 import { motion } from 'framer-motion';
 import { useWallet } from '../WalletContext';
 import { useTheme } from '../context/ThemeContext';

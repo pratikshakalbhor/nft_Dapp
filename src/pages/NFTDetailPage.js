@@ -167,7 +167,6 @@ export default function NFTDetailPage() {
 
   const startAuction = async () => {
     if (!walletAddress || !isOwner) return;
-    const nftRef = ref(db, `marketplace/nft_${id}`);
     const twentyFourHours = 24 * 60 * 60 * 1000;
     const newEnd = Date.now() + twentyFourHours;
     await set(ref(db, `marketplace/nft_${id}/auctionEnd`), newEnd);
