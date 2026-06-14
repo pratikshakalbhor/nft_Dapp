@@ -7,6 +7,8 @@ import { Send, User, MessageSquare, Loader2, Plus } from 'lucide-react';
 import { shortenAddress } from '../utils';
 import albedo from '@albedo-link/intent';
 import { Wallet, keccak256, toUtf8Bytes } from 'ethers';
+import { ref, set, get } from "firebase/database";
+import { db } from "../firebase";
 
 const ChatPage = () => {
   const { walletAddress, walletType } = useWallet();
@@ -32,10 +34,11 @@ const ChatPage = () => {
     if (!walletAddress) return;
     setIsInitializing(true);
     try {
-      let signer;
       
       // Since XMTP needs an EVM-like signer, we derive one from the Stellar wallet
       // We ask the user to sign a message, and use that signature as a seed for an XMTP identity.
+      
+      let signatureSource;
       
       if (walletType === 'ALBEDO') {
         const message = "Sign in to NFT Hub Messaging. This will create your secure Web3 identity.";
@@ -43,21 +46,36 @@ const ChatPage = () => {
             message: message,
             address: walletAddress
         });
-        
-        // Derive a stable Ethereum-compatible private key from the Stellar signature
-        // This ensures the user has the same XMTP identity every time they log in with this Stellar wallet
-        const signatureHash = keccak256(toUtf8Bytes(signResult.message_signature));
-        signer = new Wallet(signatureHash); 
+        signatureSource = signResult.message_signature;
       } else {
-        // Fallback for other wallets: create a stable seed based on the address if signMessage isn't available
-        const fallbackSeed = keccak256(toUtf8Bytes("XMTP_STALLAR_SEED_" + walletAddress));
-        signer = new Wallet(fallbackSeed);
+        signatureSource = "XMTP_STELLAR_SEED_" + walletAddress;
       }
 
-      // Initialize XMTP Client
-      // Use 'dev' environment as V2 production publishing is retired
-      const xmtp = await Client.create(signer, { env: "dev" });
+      // Derive a stable Ethereum-compatible private key
+      const ethWallet = new Wallet(keccak256(toUtf8Bytes(signatureSource)));
+
+      const xmtpSigner = {
+        type: "EOA",
+        getIdentifier: () => ({
+          identifier: ethWallet.address,
+          identifierKind: 0, 
+        }),
+        signMessage: async (message) => {
+          const signature = await ethWallet.signMessage(message);
+          const { getBytes } = await import('ethers');
+          return getBytes(signature);
+        },
+      };
+
+      const xmtp = await Client.create(xmtpSigner, { env: "dev" });
       setClient(xmtp);
+
+      // Save mapping in Firebase for others to find this user
+      try {
+        await set(ref(db, `xmtp_mapping/${walletAddress}`), ethWallet.address);
+      } catch (err) {
+        console.error("Firebase mapping error:", err);
+      }
       
       const allConvs = await xmtp.conversations.list();
       setConversations(allConvs);
@@ -68,7 +86,12 @@ const ChatPage = () => {
       if (peer && peer !== walletAddress) {
         setPeerAddress(peer);
         try {
-           const newConv = await xmtp.conversations.newConversation(peer);
+           let resolvedPeer = peer;
+           if (!peer.startsWith('0x')) {
+              const snap = await get(ref(db, `xmtp_mapping/${peer}`));
+              if (snap.exists()) resolvedPeer = snap.val();
+           }
+           const newConv = await xmtp.conversations.newConversation(resolvedPeer);
            setSelectedConversation(newConv);
         } catch(e) {
            console.error("Could not start conv with peer from URL", e);
@@ -90,7 +113,22 @@ const ChatPage = () => {
       return;
     }
     try {
-      const newConv = await client.conversations.newConversation(peerAddress);
+      let resolvedAddress = peerAddress;
+
+      // If it looks like a Stellar address, try to resolve from Firebase
+      if (!peerAddress.startsWith('0x')) {
+        const snapshot = await get(ref(db, `xmtp_mapping/${peerAddress}`));
+        if (snapshot.exists()) {
+          resolvedAddress = snapshot.val();
+        } else {
+           // Fallback: try to derive if we suspect it's a non-Albedo user
+           // But better to alert if not found
+           alert("This user hasn't enabled chat yet.");
+           return;
+        }
+      }
+
+      const newConv = await client.conversations.newConversation(resolvedAddress);
       setConversations([newConv, ...conversations]);
       setSelectedConversation(newConv);
     } catch (e) {
