@@ -1,15 +1,11 @@
-[package]
-name = "token-contract"
-version = "0.1.0"
-edition = "2021"
-publish = false
+[workspace]
+resolver = "2"
+members = [
+  "contracts/*",
+]
 
-[lib]
-crate-type = ["cdylib"]
-doctest = false
-
-[dependencies]
-soroban-sdk = "22.0.0"
+[workspace.dependencies]
+soroban-sdk = "20"
 
 [profile.release]
 opt-level = "z"
