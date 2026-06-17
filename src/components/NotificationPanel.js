@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { getNotifications, markAllAsRead } from "../utils/notificationService";
 import { useTheme } from "../context/ThemeContext";
@@ -8,7 +7,6 @@ const NotificationPanel = ({ walletAddress }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const panelRef = useRef(null);
-  const navigate = useNavigate();
   const { isDark } = useTheme();
 
 
@@ -145,12 +143,6 @@ const NotificationPanel = ({ walletAddress }) => {
                 <div
                   key={notif.id}
                   onClick={() => {
-                    navigate("/chat", {
-                      state: {
-                        autoOpenJobId: notif.jobId,
-                        senderAddress: notif.from
-                      }
-                    });
                     setIsOpen(false);
                   }}
                   style={{
