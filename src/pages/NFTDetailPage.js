@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Clock,
   ChevronRight,
-  MessageSquare
 } from "lucide-react";
 import { 
   Tooltip, 
@@ -237,13 +236,7 @@ export default function NFTDetailPage() {
               >
                 <Heart fill={liked ? "#ff4081" : "none"} size={20} />
               </motion.button>
-              <button 
-                onClick={() => navigate(`/chat?peer=${nft.owner}`)}
-                style={{ width: "44px", height: "44px", borderRadius: "12px", border: "none", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(10px)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-                title="Message Seller"
-              >
-                <MessageSquare size={20} />
-              </button>
+
               <button style={{ width: "44px", height: "44px", borderRadius: "12px", border: "none", background: "rgba(0,0,0,0.3)", backdropFilter: "blur(10px)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Share2 size={20} />
               </button>
