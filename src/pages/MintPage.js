@@ -12,7 +12,7 @@ import "./MintPage.css";
 import { ref, set, onValue } from "firebase/database";
 import { db } from "../firebase";
 import { shortenAddress } from "../utils";
-import { getNFTTraits, calculateRarityScore, getRarityTier } from "../utils/RarityCalculator";
+import { calculateRarityScore } from "../utils/RarityCalculator";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
