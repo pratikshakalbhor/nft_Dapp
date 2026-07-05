@@ -15,6 +15,7 @@ import { containerVariants, itemVariants } from "../components/ProfilePage";
 import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search, SlidersHorizontal } from "lucide-react";
 import SkeletonCard from "../components/SkeletonCard";
 import { AIPricePredictorMini } from "../components/AIPricePredictor";
+import { getNFTTraits, calculateRarityScore, getRarityTier } from "../utils/RarityCalculator";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 
@@ -87,6 +88,11 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
     blockchainNFTs.forEach((nft, i) => {
       const nftKey = `nft_${nft.id}`;
       const fb = firebaseData[nftKey];
+      const traits = fb?.traits || getNFTTraits(nft);
+      // Pass blockchainNFTs as allNfts to compute frequency
+      const rarityScore = fb?.rarityScore || calculateRarityScore(traits, blockchainNFTs);
+      const rarityTier = getRarityTier(rarityScore);
+
       result.push({
         id: i + 1,
         nftKey,
@@ -101,6 +107,9 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
         listed: fb?.listed || false,
         sold: fb?.sold || false,
         isCert: false,
+        traits,
+        rarityScore,
+        rarityTier,
       });
     });
 
@@ -110,6 +119,10 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       // Skip if already in result from blockchain
       const alreadyIn = result.find(n => n.nftKey === fb.nftKey);
       if (!alreadyIn) {
+        const traits = fb.traits || getNFTTraits(fb);
+        const rarityScore = fb.rarityScore || calculateRarityScore(traits, result);
+        const rarityTier = getRarityTier(rarityScore);
+
         result.push({
           id: result.length + 1,
           nftKey: fb.nftKey,
@@ -122,6 +135,9 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
           listed: fb.listed || false,
           sold: fb.sold || false,
           isCert: false,
+          traits,
+          rarityScore,
+          rarityTier,
         });
       }
     });
@@ -551,6 +567,34 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                 style={{ cursor: "pointer" }}
               >
                 <div style={{ position: "relative", aspectRatio: "1", overflow: "hidden", background: isDark ? "#0a0a15" : "#f1f5f9" }}>
+                  {/* Rarity Badge with Tooltip */}
+                  {nft.rarityTier && (
+                    <div 
+                      title={`Rarity Score: ${nft.rarityScore}`}
+                      style={{
+                        position: "absolute",
+                        top: "12px",
+                        right: "12px",
+                        zIndex: 10,
+                        background: nft.rarityTier.bg,
+                        border: `1px solid ${nft.rarityTier.border}`,
+                        color: nft.rarityTier.color,
+                        padding: "4px 8px",
+                        borderRadius: "10px",
+                        fontSize: "0.72rem",
+                        fontWeight: "800",
+                        backdropFilter: "blur(8px)",
+                        boxShadow: `0 4px 12px ${nft.rarityTier.bg}`,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        cursor: "help"
+                      }}
+                    >
+                      {nft.rarityTier.badge}
+                    </div>
+                  )}
+
                   {nft.image ? (
                     <img src={nft.image} alt={nft.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s" }}
                       onMouseEnter={e => e.target.style.transform = "scale(1.08)"}
@@ -572,7 +616,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                   {nft.listed && !nft.sold ? <span className="for-sale-badge" style={{background: "#3b82f6"}}>For Sale</span>
                       : null}
                   {nft.ownerFull === walletAddress && (
-                    <span className="own-badge">
+                    <span className="own-badge" style={{ left: "12px", right: "auto" }}>
                       {nft.soldPrice ? "PURCHASED" : "YOURS"}
                     </span>
                   )}

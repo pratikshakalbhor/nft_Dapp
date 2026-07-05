@@ -9,6 +9,10 @@ import { useTheme } from "../context/ThemeContext";
 import { Check as CheckIcon, Copy as CopyIcon, Plus, Sparkles, ImageIcon, Loader } from "lucide-react";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
 import "./MintPage.css";
+import { ref, set, onValue } from "firebase/database";
+import { db } from "../firebase";
+import { shortenAddress } from "../utils";
+import { getNFTTraits, calculateRarityScore, getRarityTier } from "../utils/RarityCalculator";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -68,6 +72,23 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiImageUrl, setAiImageUrl] = useState("");
   const fileInputRef = useRef(null);
+
+  const [traitBackground, setTraitBackground] = useState("Space Black");
+  const [traitEyes, setTraitEyes] = useState("Dark Shades");
+  const [traitOutfit, setTraitOutfit] = useState("Hoodie");
+  const [traitAccessory, setTraitAccessory] = useState("None");
+  const [allNfts, setAllNfts] = useState([]);
+
+  useEffect(() => {
+    const allNftsRef = ref(db, "marketplace");
+    const unsubAll = onValue(allNftsRef, (snap) => {
+      const val = snap.val();
+      if (val) {
+        setAllNfts(Object.values(val));
+      }
+    });
+    return () => unsubAll();
+  }, []);
 
   const fetchBalance = useCallback(async () => {
     try {
@@ -275,9 +296,52 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
       setStatus("NFT Minted Successfully!");
       setStatusType("success");
       setTxHash(response.hash);
+      // Get the ID of the new NFT by querying total tokens
+      let newNftId = nfts.length + 1;
+      try {
+        const dummyAccount = new StellarSdk.Account(walletAddress, "0");
+        const totalTx = new StellarSdk.TransactionBuilder(dummyAccount, { fee: "0", networkPassphrase: NETWORK_PASSPHRASE })
+          .addOperation(new StellarSdk.Contract(CONTRACT_ID).call("get_total"))
+          .setTimeout(30).build();
+        const totalSim = await SOROBAN_SERVER.simulateTransaction(totalTx);
+        if (totalSim && totalSim.result?.retval) {
+          const totalVal = StellarSdk.scValToNative(totalSim.result.retval);
+          if (totalVal) newNftId = totalVal;
+        }
+      } catch (e) {
+        console.warn("Failed to get total NFTs dynamically:", e);
+      }
+
+      // Save traits and rarityScore to Firebase under `marketplace/nft_${newNftId}`
+      const nftKey = `nft_${newNftId}`;
+      const traits = [
+        { type: "Background", value: traitBackground },
+        { type: "Eyes", value: traitEyes },
+        { type: "Outfit", value: traitOutfit },
+        { type: "Accessory", value: traitAccessory }
+      ];
+      
+      const isCert = name.toLowerCase().includes("certificate") || name.toLowerCase().includes("job cert");
+      const rarityScore = calculateRarityScore(traits, allNfts);
+
+      await set(ref(db, `marketplace/${nftKey}`), {
+        nftKey,
+        nftId: newNftId,
+        name: name,
+        image: tokenURI,
+        ownerFull: walletAddress,
+        owner: shortenAddress(walletAddress),
+        traits: traits,
+        rarityScore: rarityScore,
+        listed: false,
+        sold: false,
+        isCert: isCert,
+        mintedAt: Date.now()
+      });
+
       setNfts((prev) => [
         ...prev,
-        { name, imageId: tokenURI, assetCode: "NFT", issuer: CONTRACT_ID },
+        { id: newNftId, name, imageId: tokenURI, assetCode: "NFT", issuer: CONTRACT_ID },
       ]);
 
       // Log Activity
@@ -407,6 +471,89 @@ const MintPage = ({ walletAddress, server, setNfts, nfts }) => {
                   <textarea
                     className={`w-full ${isDark ? "bg-black/20 border-white/10 text-white placeholder-gray-500" : "bg-white/50 border-gray-200 text-gray-900 placeholder-gray-400"} border rounded-xl px-4 py-3 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all resize-none h-24`}
                     placeholder="Describe your NFT..." value={description} onChange={(e) => setDescription(e.target.value)} disabled={loading} />
+                </div>
+
+                {/* Traits / Attributes Section */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <label className={`text-sm font-semibold ${isDark ? "text-gray-300" : "text-gray-800"} ml-1`}>
+                      🛡️ NFT Attributes (Traits)
+                    </label>
+                    <button
+                      onClick={() => {
+                        const backgrounds = ["Space Black", "Cyber Neon", "Crimson Red", "Royal Purple", "Solar Gold", "Glacier Blue", "Emerald Green"];
+                        const eyes = ["Laser Glow", "Cyborg Visor", "Dark Shades", "Heterochromia", "Holographic", "Anime Eyes", "Golden Pupils"];
+                        const clothes = ["Cyber Jacket", "Hoodie", "Astro Suit", "Ninja Robes", "Steampunk Vest", "Formal Tux", "T-Shirt"];
+                        const accessories = ["Golden Chain", "Crown", "Wireless Earbuds", "VR Headset", "Angel Halo", "None", "Pet Companion"];
+                        
+                        setTraitBackground(backgrounds[Math.floor(Math.random() * backgrounds.length)]);
+                        setTraitEyes(eyes[Math.floor(Math.random() * eyes.length)]);
+                        setTraitOutfit(clothes[Math.floor(Math.random() * clothes.length)]);
+                        setTraitAccessory(accessories[Math.floor(Math.random() * accessories.length)]);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isDark ? "bg-white/5 hover:bg-white/10 text-purple-400" : "bg-gray-100 hover:bg-gray-200 text-purple-650"}`}
+                    >
+                      🎲 Roll Random Attributes
+                    </button>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Background</span>
+                      <select 
+                        value={traitBackground} 
+                        onChange={(e) => setTraitBackground(e.target.value)}
+                        className={`w-full ${isDark ? "bg-black/20 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"} border rounded-xl px-3 py-2 text-sm focus:outline-none transition-all`}
+                        style={{ colorScheme: isDark ? "dark" : "light" }}
+                      >
+                        {["Space Black", "Cyber Neon", "Crimson Red", "Royal Purple", "Solar Gold", "Glacier Blue", "Emerald Green"].map((v) => (
+                          <option key={v} value={v} style={{ background: isDark ? "#1e1e2d" : "#fff", color: isDark ? "#fff" : "#000" }}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Eyes</span>
+                      <select 
+                        value={traitEyes} 
+                        onChange={(e) => setTraitEyes(e.target.value)}
+                        className={`w-full ${isDark ? "bg-black/20 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"} border rounded-xl px-3 py-2 text-sm focus:outline-none transition-all`}
+                        style={{ colorScheme: isDark ? "dark" : "light" }}
+                      >
+                        {["Laser Glow", "Cyborg Visor", "Dark Shades", "Heterochromia", "Holographic", "Anime Eyes", "Golden Pupils"].map((v) => (
+                          <option key={v} value={v} style={{ background: isDark ? "#1e1e2d" : "#fff", color: isDark ? "#fff" : "#000" }}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Outfit</span>
+                      <select 
+                        value={traitOutfit} 
+                        onChange={(e) => setTraitOutfit(e.target.value)}
+                        className={`w-full ${isDark ? "bg-black/20 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"} border rounded-xl px-3 py-2 text-sm focus:outline-none transition-all`}
+                        style={{ colorScheme: isDark ? "dark" : "light" }}
+                      >
+                        {["Cyber Jacket", "Hoodie", "Astro Suit", "Ninja Robes", "Steampunk Vest", "Formal Tux", "T-Shirt"].map((v) => (
+                          <option key={v} value={v} style={{ background: isDark ? "#1e1e2d" : "#fff", color: isDark ? "#fff" : "#000" }}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className={`text-xs font-medium ${isDark ? "text-gray-400" : "text-gray-600"}`}>Accessory</span>
+                      <select 
+                        value={traitAccessory} 
+                        onChange={(e) => setTraitAccessory(e.target.value)}
+                        className={`w-full ${isDark ? "bg-black/20 border-white/10 text-white" : "bg-white border-gray-200 text-gray-900"} border rounded-xl px-3 py-2 text-sm focus:outline-none transition-all`}
+                        style={{ colorScheme: isDark ? "dark" : "light" }}
+                      >
+                        {["Golden Chain", "Crown", "Wireless Earbuds", "VR Headset", "Angel Halo", "None", "Pet Companion"].map((v) => (
+                          <option key={v} value={v} style={{ background: isDark ? "#1e1e2d" : "#fff", color: isDark ? "#fff" : "#000" }}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Mode Tabs */}

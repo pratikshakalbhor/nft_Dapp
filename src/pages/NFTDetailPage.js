@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import AIPricePredictor from "../components/AIPricePredictor";
+import { getNFTTraits, calculateRarityScore, getRarityTier, getTraitFrequency } from "../utils/RarityCalculator";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -57,6 +58,22 @@ export default function NFTDetailPage() {
   const [offerStatus, setOfferStatus] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const [allNfts, setAllNfts] = useState([]);
+
+  useEffect(() => {
+    const allNftsRef = ref(db, "marketplace");
+    const unsubAll = onValue(allNftsRef, (snap) => {
+      const val = snap.val();
+      if (val) {
+        setAllNfts(Object.values(val));
+      }
+    });
+    return () => unsubAll();
+  }, []);
+
+  const traits = (nft || fbData) ? (fbData?.traits || getNFTTraits(nft || fbData)) : [];
+  const rarityScore = fbData?.rarityScore || calculateRarityScore(traits, allNfts);
+  const rarityTier = getRarityTier(rarityScore);
 
   // Mock Price History Data
   const priceData = [
@@ -290,6 +307,23 @@ export default function NFTDetailPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
               <span style={{ padding: "4px 12px", background: "linear-gradient(135deg, #ec489922, #8b5cf622)", border: "1px solid #ec489944", color: "#ec4899", borderRadius: "8px", fontSize: "0.75rem", fontWeight: 800, textTransform: "uppercase" }}>Limited Edition</span>
               <span style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontSize: "0.85rem", fontWeight: 500 }}># {nft.id}</span>
+              {rarityTier && (
+                <span 
+                  title={`Rarity Score: ${rarityScore}`}
+                  style={{ 
+                    padding: "4px 12px", 
+                    background: rarityTier.bg, 
+                    border: `1px solid ${rarityTier.border}`, 
+                    color: rarityTier.color, 
+                    borderRadius: "8px", 
+                    fontSize: "0.75rem", 
+                    fontWeight: 805, 
+                    cursor: "help" 
+                  }}
+                >
+                  {rarityTier.badge} ({rarityScore} Score)
+                </span>
+              )}
             </div>
             <h1 style={{ fontSize: "3rem", fontWeight: 900, margin: "0 0 16px", lineHeight: 1.1 }}>{nft.name}</h1>
             
@@ -390,12 +424,66 @@ export default function NFTDetailPage() {
           {/* Tabs Section */}
           <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
             <div onClick={() => setActiveTab("details")} style={tabStyle(activeTab === "details")}>Details</div>
+            <div onClick={() => setActiveTab("rarity")} style={tabStyle(activeTab === "rarity")}>Rarity Breakdown</div>
             <div onClick={() => setActiveTab("history")} style={tabStyle(activeTab === "history")}>History</div>
             <div onClick={() => setActiveTab("offers")} style={tabStyle(activeTab === "offers")}>Offers ({offers.length})</div>
           </div>
 
           <div style={{ ...glassStyle, minHeight: "200px" }}>
              <AnimatePresence mode="wait">
+               {activeTab === "rarity" && (
+                 <motion.div key="rarity" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                      
+                      {/* Overall Rarity Score Info */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.01)", borderRadius: "16px", border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)" }}>
+                        <div>
+                          <div style={{ fontSize: "0.8rem", opacity: 0.6, marginBottom: "4px" }}>Total Rarity Score</div>
+                          <div style={{ fontSize: "2rem", fontWeight: 900, color: rarityTier?.color }}>{rarityScore}</div>
+                        </div>
+                        <div style={{ padding: "8px 16px", background: rarityTier?.bg, border: `1px solid ${rarityTier?.border}`, borderRadius: "12px", color: rarityTier?.color, fontWeight: 800, fontSize: "0.95rem" }}>
+                          {rarityTier?.badge}
+                        </div>
+                      </div>
+
+                      {/* Rarity Traits Breakdown Table */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <h4 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0" }}>Trait Breakdown</h4>
+                        {traits.map((t, idx) => {
+                          const freq = getTraitFrequency(t, allNfts);
+                          const freqPct = (freq * 100).toFixed(1);
+                          return (
+                            <div key={idx} style={{ padding: "16px", background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderRadius: "16px", border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.05)" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
+                                <div>
+                                  <span style={{ fontSize: "0.75rem", opacity: 0.5, fontWeight: 700, textTransform: "uppercase" }}>{t.type}</span>
+                                  <div style={{ fontSize: "0.95rem", fontWeight: 800, marginTop: "2px" }}>{t.value}</div>
+                                </div>
+                                <div style={{ fontSize: "0.85rem", fontWeight: 705, color: freq <= 0.05 ? "#ef4444" : freq <= 0.15 ? "#a78bfa" : "#3b82f6" }}>
+                                  {freqPct}% have this trait
+                                </div>
+                              </div>
+                              {/* Rarity Bar */}
+                              <div style={{ width: "100%", height: "6px", background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)", borderRadius: "999px", overflow: "hidden" }}>
+                                <div style={{ 
+                                  height: "100%", 
+                                  width: `${freqPct}%`, 
+                                  background: freq <= 0.05 
+                                    ? "linear-gradient(90deg, #ef4444, #f87171)" 
+                                    : freq <= 0.15 
+                                      ? "linear-gradient(90deg, #a78bfa, #c4b5fd)" 
+                                      : "linear-gradient(90deg, #3b82f6, #60a5fa)",
+                                  borderRadius: "999px"
+                                }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                    </div>
+                 </motion.div>
+               )}
                {activeTab === "details" && (
                  <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                    <p style={{ lineHeight: 1.6, opacity: 0.7, marginBottom: "20px" }}>
