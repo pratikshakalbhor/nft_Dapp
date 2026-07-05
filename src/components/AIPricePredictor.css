@@ -1,0 +1,579 @@
+/* ═══════════════════════════════════════════════════════
+   AI Price Predictor — Premium Dark Purple Theme
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Trigger Button ─────────────────────────────────── */
+.ai-predict-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 14px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(236, 72, 153, 0.08));
+  color: #c4b5fd;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
+}
+.ai-predict-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(236, 72, 153, 0.2));
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+.ai-predict-btn:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.25), 0 0 60px rgba(139, 92, 246, 0.08);
+  transform: translateY(-2px);
+  color: #e9d5ff;
+}
+.ai-predict-btn:hover::before {
+  opacity: 1;
+}
+.ai-predict-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+.ai-predict-btn span {
+  position: relative;
+  z-index: 1;
+}
+.ai-predict-btn .ai-icon {
+  font-size: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Light theme */
+.light-theme .ai-predict-btn {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(236, 72, 153, 0.05));
+  border-color: rgba(139, 92, 246, 0.25);
+  color: #7c3aed;
+}
+.light-theme .ai-predict-btn:hover {
+  color: #6d28d9;
+  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.15);
+}
+
+/* ── Loading Overlay ────────────────────────────────── */
+.ai-loading-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 20px;
+}
+
+.ai-brain-animation {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  animation: ai-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 40px rgba(139, 92, 246, 0.4), 0 0 80px rgba(139, 92, 246, 0.15);
+}
+
+@keyframes ai-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(139, 92, 246, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 60px rgba(139, 92, 246, 0.6), 0 0 120px rgba(236, 72, 153, 0.2); }
+}
+
+.ai-loading-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #c4b5fd;
+  letter-spacing: 0.5px;
+}
+
+.ai-loading-dots {
+  display: flex;
+  gap: 6px;
+}
+.ai-loading-dots span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  animation: ai-dot-bounce 1.4s ease-in-out infinite;
+}
+.ai-loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ai-loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes ai-dot-bounce {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-8px); opacity: 1; }
+}
+
+/* ── Prediction Card ────────────────────────────────── */
+.ai-prediction-card {
+  background: rgba(15, 12, 35, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 24px;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ai-prediction-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #8b5cf6, #ec4899, transparent);
+}
+.ai-prediction-card:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  box-shadow: 0 12px 48px rgba(139, 92, 246, 0.12);
+}
+
+.light-theme .ai-prediction-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(139, 92, 246, 0.12);
+}
+
+/* Header */
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 12px;
+}
+.ai-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ai-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #c4b5fd;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.ai-badge-icon {
+  font-size: 0.85rem;
+}
+.ai-refresh-btn {
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ai-refresh-btn:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #c4b5fd;
+}
+.light-theme .ai-refresh-btn {
+  border-color: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* Main Prediction Display */
+.ai-main-prediction {
+  padding: 12px 24px 24px;
+  text-align: center;
+}
+.ai-predicted-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 4px;
+}
+.light-theme .ai-predicted-label {
+  color: rgba(0, 0, 0, 0.4);
+}
+.ai-predicted-price {
+  font-size: 2.8rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #c4b5fd, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+  margin-bottom: 2px;
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+}
+.ai-predicted-currency {
+  font-size: 1.2rem;
+  font-weight: 800;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.35);
+  margin-left: 4px;
+}
+.light-theme .ai-predicted-currency {
+  -webkit-text-fill-color: rgba(0, 0, 0, 0.35);
+}
+.ai-price-range {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
+}
+.light-theme .ai-price-range {
+  color: rgba(0, 0, 0, 0.4);
+}
+.ai-price-range-bar {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+.light-theme .ai-price-range-bar {
+  background: rgba(0, 0, 0, 0.06);
+}
+.ai-price-range-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  transition: width 1s ease-out;
+}
+
+/* Metrics Grid */
+.ai-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 0 1px;
+}
+.light-theme .ai-metrics-grid {
+  background: rgba(0, 0, 0, 0.04);
+}
+.ai-metric {
+  padding: 18px 16px;
+  text-align: center;
+  background: rgba(15, 12, 35, 0.85);
+  transition: background 0.25s;
+}
+.light-theme .ai-metric {
+  background: rgba(255, 255, 255, 0.92);
+}
+.ai-metric:hover {
+  background: rgba(139, 92, 246, 0.06);
+}
+.ai-metric-icon {
+  font-size: 1.3rem;
+  margin-bottom: 6px;
+}
+.ai-metric-value {
+  font-size: 1.1rem;
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+.ai-metric-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.light-theme .ai-metric-label {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+/* Trend colors */
+.trend-bullish { color: #34d399; }
+.trend-bearish { color: #f87171; }
+.trend-stable { color: #fbbf24; }
+
+/* Confidence colors */
+.confidence-high { color: #34d399; }
+.confidence-medium { color: #fbbf24; }
+.confidence-low { color: #f87171; }
+
+/* Recommendation badge */
+.ai-recommendation {
+  padding: 5px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.recommendation-buy {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+.recommendation-sell {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.25);
+}
+.recommendation-hold {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+/* Reasoning Section */
+.ai-reasoning {
+  padding: 16px 24px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.light-theme .ai-reasoning {
+  border-top-color: rgba(0, 0, 0, 0.05);
+}
+.ai-reasoning-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.light-theme .ai-reasoning-title {
+  color: rgba(0, 0, 0, 0.35);
+}
+.ai-reasoning-text {
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+.light-theme .ai-reasoning-text {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Disclaimer */
+.ai-disclaimer {
+  padding: 12px 24px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.2);
+}
+.light-theme .ai-disclaimer {
+  color: rgba(0, 0, 0, 0.25);
+}
+
+/* ── Error State ────────────────────────────────────── */
+.ai-error {
+  padding: 32px 24px;
+  text-align: center;
+}
+.ai-error-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+.ai-error-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #f87171;
+  margin-bottom: 6px;
+}
+.ai-error-msg {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 16px;
+}
+.light-theme .ai-error-msg {
+  color: rgba(0, 0, 0, 0.4);
+}
+.ai-retry-btn {
+  padding: 10px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.1);
+  color: #c4b5fd;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.ai-retry-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* ── Mini Prediction (for NFT cards on Marketplace) ── */
+.ai-mini-predict-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(139, 92, 246, 0.08);
+  color: #a78bfa;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.ai-mini-predict-btn:hover {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+  transform: translateY(-1px);
+}
+.ai-mini-predict-btn .ai-mini-icon {
+  font-size: 0.85rem;
+}
+
+.ai-mini-result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.ai-mini-result .ai-mini-price {
+  color: #c4b5fd;
+  font-weight: 800;
+}
+.ai-mini-result .ai-mini-trend {
+  font-size: 0.85rem;
+}
+
+/* ── Prediction Modal (for Marketplace full result) ──── */
+.ai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
+  animation: ai-fade-in 0.3s ease;
+}
+.ai-modal-content {
+  max-width: 460px;
+  width: 100%;
+  position: relative;
+  animation: ai-slide-up 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ai-modal-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 12, 35, 0.95);
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s;
+  z-index: 10;
+}
+.ai-modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+@keyframes ai-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes ai-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Confidence Bar ──────────────────────────────── */
+.ai-confidence-bar-bg {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-top: 6px;
+}
+.light-theme .ai-confidence-bar-bg {
+  background: rgba(0, 0, 0, 0.06);
+}
+.ai-confidence-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ai-confidence-bar-fill.high { background: linear-gradient(90deg, #34d399, #10b981); }
+.ai-confidence-bar-fill.medium { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.ai-confidence-bar-fill.low { background: linear-gradient(90deg, #f87171, #ef4444); }
+
+/* ── Shimmer loading for mini button ─────────────── */
+.ai-mini-loading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.06), rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.06));
+  background-size: 200% 100%;
+  animation: ai-shimmer 1.5s ease-in-out infinite;
+  border: 1px solid rgba(139, 92, 246, 0.1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+@keyframes ai-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Responsive ──────────────────────────────────── */
+@media (max-width: 640px) {
+  .ai-predicted-price { font-size: 2.2rem; }
+  .ai-metrics-grid { grid-template-columns: repeat(3, 1fr); }
+  .ai-metric { padding: 14px 10px; }
+  .ai-metric-value { font-size: 0.95rem; }
+  .ai-card-header { padding: 16px 18px 10px; }
+  .ai-main-prediction { padding: 10px 18px 20px; }
+  .ai-reasoning { padding: 14px 18px 16px; }
+  .ai-disclaimer { padding: 10px 18px 14px; }
+}

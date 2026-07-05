@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AIPricePredictor from "../components/AIPricePredictor";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -373,6 +374,17 @@ export default function NFTDetailPage() {
             <div style={{ marginTop: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "0.8rem", opacity: 0.5 }}>
               <Gavel size={14} /> Auction powered by Stellar Network
             </div>
+          </div>
+
+          {/* AI Price Predictor */}
+          <div style={{ marginBottom: "24px" }}>
+            <AIPricePredictor
+              nft={nft}
+              price={fbData?.price || "10"}
+              currency={fbData?.currency || "XLM"}
+              priceHistory={priceData}
+              isDark={isDark}
+            />
           </div>
 
           {/* Tabs Section */}

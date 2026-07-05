@@ -14,6 +14,7 @@ import { recordActivity } from "../utils/activityService";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
 import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search, SlidersHorizontal } from "lucide-react";
 import SkeletonCard from "../components/SkeletonCard";
+import { AIPricePredictorMini } from "../components/AIPricePredictor";
 
 const HORIZON_URL = "https://horizon-testnet.stellar.org";
 
@@ -596,6 +597,14 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
                   </div>
 
                   {/* Action buttons */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                    <AIPricePredictorMini 
+                      nft={nft} 
+                      price={nft.price} 
+                      currency={nft.currency || "XLM"} 
+                    />
+                  </div>
+                  {/* Buy/List buttons */}
                   {nft.ownerFull === walletAddress ? (
                     nft.sold ? (
                       <div style={{ padding: "10px", textAlign: "center", color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)", fontSize: "0.85rem" }}> You sold this NFT</div>
