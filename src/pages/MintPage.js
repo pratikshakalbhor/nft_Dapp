@@ -30,13 +30,30 @@ const validateFile = (file) => {
 };
 
 const uploadToPinata = async (file) => {
+  const jwt = process.env.REACT_APP_PINATA_JWT;
+  if (!jwt) {
+    throw new Error(
+      "Pinata JWT token (REACT_APP_PINATA_JWT) is missing or undefined. " +
+      "If you recently updated your .env file, please restart your React development server to apply the changes."
+    );
+  }
+
+  const parts = jwt.split(".");
+  if (parts.length !== 3) {
+    throw new Error(
+      "Pinata JWT token (REACT_APP_PINATA_JWT) is malformed. " +
+      `Expected a JWT with 3 segments separated by dots (header.payload.signature), but got ${parts.length}. ` +
+      "Please verify you copied the entire, uncut JWT from Pinata without extra spaces."
+    );
+  }
+
   const formData = new FormData();
   formData.append("file", file);
   try {
     const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.REACT_APP_PINATA_JWT}`,
+        Authorization: `Bearer ${jwt}`,
       },
       body: formData,
     });
