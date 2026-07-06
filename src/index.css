@@ -46,7 +46,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   
-  @apply bg-gradient-to-br from-[#0b0b15] via-[#12122b] to-[#1b1035] text-white min-h-screen;
+  @apply text-white min-h-screen;
   background-attachment: fixed;
 }
 
