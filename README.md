@@ -36,9 +36,22 @@ A full-stack decentralized application (DApp) for creating, managing, and tradin
 
 ```
 nft/
-├── src/                    # React frontend code
-├── backend/                # Node.js backend (Image uploads)
-│   └── server.js
+├── src/                    # Reorganized React frontend
+│   ├── components/         # Reusable UI components (TopNav, Skeletons, WalletModal)
+│   ├── context/            # Context API providers (Theme, WalletContext)
+│   ├── pages/              # Lazy-loaded page components (Dashboard, Marketplace, Profile)
+│   ├── services/           # External API & blockchain services (Firebase, Wallet Service)
+│   └── utils/              # Helper functions & utilities (Soroban, RarityCalculator)
+├── backend/                # Security-hardened MVC Node.js Backend
+│   ├── config/             # Configuration registry loaded from environment variables
+│   ├── controllers/        # Request handling and control logic layers
+│   ├── middleware/         # Security and Express utilities (Rate limiter, Helmet, Error handler)
+│   ├── routes/             # Aggregate Express API endpoints (with health status check)
+│   ├── services/           # Background/External services (Pinata IPFS Pinning engine)
+│   ├── validators/         # Input request validation guards
+│   ├── utils/              # Utilities (Structured console Logger, AppError handlers)
+│   ├── app.js              # Express app bootstrap instance
+│   └── server.js           # Server listen & process uncaught exception boundaries
 ├── contract/               # Soroban Smart Contracts (Workspace)
 │   ├── contracts/
 │   │   ├── snft-token/     # SNFT Token contract
