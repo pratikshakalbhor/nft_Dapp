@@ -104,6 +104,7 @@ export const mintNFT = async (walletAddress, name, imageId) => {
     }
 
     if (getResponse.status === "SUCCESS") {
+      clearNFTCache();
       return { status: "SUCCESS", hash: sendResponse.hash };
     } else {
       console.error("Transaction failed after submission:", getResponse);
@@ -144,6 +145,44 @@ const performReadOnlyCall = async (sourceAddress, operation) => {
   return scValToNative(simulation.result.retval);
 };
 
+// Caching system for blockchain calls
+const NFT_METADATA_CACHE_PREFIX = "soroban_nft_metadata_";
+const NFT_LIST_CACHE_KEY = "soroban_nfts_list_cache";
+const NFT_LIST_CACHE_TTL = 15000; // 15 seconds TTL for lists
+
+const getCachedNFTMetadata = (id) => {
+  try {
+    const cached = localStorage.getItem(`${NFT_METADATA_CACHE_PREFIX}${id}`);
+    return cached ? JSON.parse(cached) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const setCachedNFTMetadata = (id, name, image) => {
+  try {
+    localStorage.setItem(
+      `${NFT_METADATA_CACHE_PREFIX}${id}`,
+      JSON.stringify({ name, image })
+    );
+  } catch (e) {}
+};
+
+export const clearNFTCache = () => {
+  try {
+    // Collect keys to remove
+    const keysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith(NFT_LIST_CACHE_KEY)) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    console.log("[Soroban] NFT List cache invalidated");
+  } catch (e) {}
+};
+
 /**
  * For production apps, consider a more efficient contract design (e.g., a `get_nfts_by_owner` function).
  * @param {string} walletAddress - The address of the owner.
@@ -151,6 +190,18 @@ const performReadOnlyCall = async (sourceAddress, operation) => {
  */
 export const fetchNFTs = async (walletAddress) => {
   if (!walletAddress) return [];
+
+  // Short term caching for lists
+  try {
+    const listCache = sessionStorage.getItem(`${NFT_LIST_CACHE_KEY}_${walletAddress}`);
+    if (listCache) {
+      const { data, timestamp } = JSON.parse(listCache);
+      if (Date.now() - timestamp < NFT_LIST_CACHE_TTL) {
+        console.log("[Soroban] Returning cached user NFTs array");
+        return data;
+      }
+    }
+  } catch (e) {}
 
   const contract = new Contract(CONTRACT_ID);
   try {
@@ -177,6 +228,11 @@ export const fetchNFTs = async (walletAddress) => {
 
         // If the owner matches, fetch the name and image for this NFT.
         if (ownerAddress === walletAddress) {
+          const cachedMetadata = getCachedNFTMetadata(i);
+          if (cachedMetadata) {
+            return { id: i, owner: ownerAddress, name: cachedMetadata.name, image: cachedMetadata.image };
+          }
+
           const [name, image] = await Promise.all([
             performReadOnlyCall(
               walletAddress,
@@ -187,6 +243,7 @@ export const fetchNFTs = async (walletAddress) => {
               contract.call("get_image", nativeToScVal(i, { type: "u32" }))
             ),
           ]);
+          setCachedNFTMetadata(i, name, image);
           return { id: i, owner: ownerAddress, name, image };
         }
         return null;
@@ -196,9 +253,17 @@ export const fetchNFTs = async (walletAddress) => {
 
     // 2. Wait for all fetches to complete.
     const allNfts = await Promise.all(nftPromises);
+    const filteredNfts = allNfts.filter((nft) => nft !== null);
 
-    // 3. Filter out nulls (NFTs not owned by the user or errors) and return.
-    return allNfts.filter((nft) => nft !== null);
+    // Save to cache
+    try {
+      sessionStorage.setItem(
+        `${NFT_LIST_CACHE_KEY}_${walletAddress}`,
+        JSON.stringify({ data: filteredNfts, timestamp: Date.now() })
+      );
+    } catch (e) {}
+
+    return filteredNfts;
   } catch (error) {
     console.error("Error fetching NFTs:", error);
     return []; // Return an empty array on failure.
@@ -213,6 +278,18 @@ export const fetchNFTs = async (walletAddress) => {
 export const fetchAllNFTs = async (walletAddress) => {
   if (!walletAddress) return [];
 
+  // Short term caching for lists
+  try {
+    const listCache = sessionStorage.getItem(`${NFT_LIST_CACHE_KEY}_all`);
+    if (listCache) {
+      const { data, timestamp } = JSON.parse(listCache);
+      if (Date.now() - timestamp < NFT_LIST_CACHE_TTL) {
+        console.log("[Soroban] Returning cached all NFTs array");
+        return data;
+      }
+    }
+  } catch (e) {}
+
   const contract = new Contract(CONTRACT_ID);
   try {
     const totalNum = await performReadOnlyCall(
@@ -222,26 +299,57 @@ export const fetchAllNFTs = async (walletAddress) => {
 
     if (totalNum === null || totalNum === 0) return [];
 
-    // Reduced parallelization to prevent 502/rate-limiting
-    const allNfts = [];
+    const idList = [];
     for (let id = 1; id <= totalNum; id++) {
-      try {
-        const ownerResult = await performReadOnlyCall(
-          walletAddress,
-          contract.call("get_owner", nativeToScVal(id, { type: "u32" }))
-        );
-        const ownerAddress = ownerResult ? new Address(ownerResult).toString() : null;
-        if (!ownerAddress) continue;
-
-        const [name, image] = await Promise.all([
-          performReadOnlyCall(walletAddress, contract.call("get_name", nativeToScVal(id, { type: "u32" }))),
-          performReadOnlyCall(walletAddress, contract.call("get_image", nativeToScVal(id, { type: "u32" }))),
-        ]);
-        allNfts.push({ id, owner: ownerAddress, name, image });
-      } catch (err) {
-        console.warn(`Failed to fetch NFT #${id}`, err);
-      }
+      idList.push(id);
     }
+
+    const allNfts = [];
+    const batchSize = 5;
+
+    for (let i = 0; i < idList.length; i += batchSize) {
+      const batchIds = idList.slice(i, i + batchSize);
+      const batchPromises = batchIds.map(async (id) => {
+        try {
+          const ownerResult = await performReadOnlyCall(
+            walletAddress,
+            contract.call("get_owner", nativeToScVal(id, { type: "u32" }))
+          );
+          const ownerAddress = ownerResult ? new Address(ownerResult).toString() : null;
+          if (!ownerAddress) return null;
+
+          const cachedMeta = getCachedNFTMetadata(id);
+          if (cachedMeta) {
+            return { id, owner: ownerAddress, name: cachedMeta.name, image: cachedMeta.image };
+          }
+
+          const [name, image] = await Promise.all([
+            performReadOnlyCall(walletAddress, contract.call("get_name", nativeToScVal(id, { type: "u32" }))),
+            performReadOnlyCall(walletAddress, contract.call("get_image", nativeToScVal(id, { type: "u32" }))),
+          ]);
+
+          setCachedNFTMetadata(id, name, image);
+          return { id, owner: ownerAddress, name, image };
+        } catch (err) {
+          console.warn(`Failed to fetch NFT #${id}`, err);
+          return null;
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach((res) => {
+        if (res) allNfts.push(res);
+      });
+    }
+
+    // Save to cache
+    try {
+      sessionStorage.setItem(
+        `${NFT_LIST_CACHE_KEY}_all`,
+        JSON.stringify({ data: allNfts, timestamp: Date.now() })
+      );
+    } catch (e) {}
+
     return allNfts;
   } catch (error) {
     console.error("Error fetching all NFTs:", error);
@@ -268,6 +376,11 @@ export const fetchNFTById = async (walletAddress, id) => {
       : null;
     if (!ownerAddress) return null;
 
+    const cachedMeta = getCachedNFTMetadata(id);
+    if (cachedMeta) {
+      return { id, owner: ownerAddress, name: cachedMeta.name, image: cachedMeta.image };
+    }
+
     const [name, image] = await Promise.all([
       performReadOnlyCall(
         walletAddress,
@@ -278,6 +391,8 @@ export const fetchNFTById = async (walletAddress, id) => {
         contract.call("get_image", nativeToScVal(id, { type: "u32" }))
       ),
     ]);
+    
+    setCachedNFTMetadata(id, name, image);
     return { id, owner: ownerAddress, name, image };
   } catch (error) {
     console.error(`Error fetching NFT ${id}:`, error);

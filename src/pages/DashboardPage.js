@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
@@ -69,7 +69,7 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
     boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.3)" : "0 8px 32px rgba(0,0,0,0.05)",
   };
 
-  const stats = [
+  const stats = useMemo(() => [
     { 
         icon: <Images size={20} />, 
         label: "Total Assets", 
@@ -98,7 +98,7 @@ export default function DashboardPage({ walletAddress, balance, nfts }) {
         color: parseFloat(portfolioChange) >= 0 ? "#10b981" : "#ef4444",
         sub: "Based on holdings"
     },
-  ];
+  ], [nfts, balance, portfolioValue, portfolioChange]);
 
   const containerVariants = {
     hidden: { opacity: 0 },

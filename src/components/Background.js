@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import TubesCursor from "../utils/tubesCursor";
 
 export default function Background() {
   const canvasRef = useRef(null);
@@ -16,35 +15,42 @@ export default function Background() {
     if (isLoginPage) {
       // 3D Tubes Gemstone Background
       let app;
-      try {
-        app = TubesCursor(canvas, {
-          bloom: {
-            threshold: 0,
-            strength: isDark ? 1.5 : 1.0,
-            radius: 0.5
-          },
-          tubes: {
-            count: 14,
-            colors: isDark 
-              ? ["#8b5cf6", "#ec4899", "#3b82f6"] // Neon purple, pink, and blue/indigo
-              : ["#a855f7", "#ec4899", "#3b82f6"], // Vibrant colors for light mode
-            minRadius: 0.035,
-            maxRadius: 0.085,
-            minTubularSegments: 64,
-            maxTubularSegments: 96,
-            lights: {
-              intensity: isDark ? 220 : 160,
+      let active = true;
+
+      import("../utils/tubesCursor").then((module) => {
+        if (!active) return;
+        const TubesCursor = module.default;
+        try {
+          app = TubesCursor(canvas, {
+            bloom: {
+              threshold: 0,
+              strength: isDark ? 1.5 : 1.0,
+              radius: 0.5
+            },
+            tubes: {
+              count: 14,
               colors: isDark 
-                ? ["#8b5cf6", "#ec4899", "#06b6d4", "#3b82f6"]
-                : ["#c084fc", "#f472b6", "#22d3ee", "#60a5fa"]
+                ? ["#8b5cf6", "#ec4899", "#3b82f6"] // Neon purple, pink, and blue/indigo
+                : ["#a855f7", "#ec4899", "#3b82f6"], // Vibrant colors for light mode
+              minRadius: 0.035,
+              maxRadius: 0.085,
+              minTubularSegments: 64,
+              maxTubularSegments: 96,
+              lights: {
+                intensity: isDark ? 220 : 160,
+                colors: isDark 
+                  ? ["#8b5cf6", "#ec4899", "#06b6d4", "#3b82f6"]
+                  : ["#c084fc", "#f472b6", "#22d3ee", "#60a5fa"]
+              }
             }
-          }
-        });
-      } catch (e) {
-        console.error("Failed to initialize TubesCursor background:", e);
-      }
+          });
+        } catch (e) {
+          console.error("Failed to initialize TubesCursor background:", e);
+        }
+      });
 
       return () => {
+        active = false;
         if (app && typeof app.dispose === "function") {
           app.dispose();
         }

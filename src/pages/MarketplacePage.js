@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import * as StellarSdk from "@stellar/stellar-sdk";
@@ -9,7 +9,7 @@ import { signTransaction } from "../walletService";
 import { NETWORK, NETWORK_PASSPHRASE } from "../constants";
 import { useTheme } from "../context/ThemeContext";
 import { shortenAddress } from "../utils";
-import { fetchAllNFTs } from "../utils/soroban";
+import { fetchAllNFTs, clearNFTCache } from "../utils/soroban";
 import { recordActivity } from "../utils/activityService";
 import { containerVariants, itemVariants } from "../components/ProfilePage";
 import { RefreshCw, Tag, ShoppingCart, Trash2, Edit2, Search, SlidersHorizontal } from "lucide-react";
@@ -81,7 +81,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
   }, [walletAddress]);
 
   // ── Merge blockchain + Firebase into final listings ───────────────────────
-  const listings = (() => {
+  const listings = useMemo(() => {
     const result = [];
 
     // 1. Start with blockchain NFTs
@@ -143,40 +143,46 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
     });
 
     return result;
-  })();
+  }, [blockchainNFTs, firebaseData]);
 
   // ── Filtered listings ─────────────────────────────────────────────────────
-  const filteredListings = listings
-    .filter(n => {
-      const matchesSearch = n.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          n.ownerFull.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+  const filteredListings = useMemo(() => {
+    return listings
+      .filter(n => {
+        const matchesSearch = n.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            n.ownerFull.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
 
-      if (filter === "sale") return n.listed && !n.sold;
-      if (filter === "mine") return n.ownerFull === walletAddress;
-      if (filter === "fav") return likes[n.nftKey];
-      return true;
-    })
-    .filter(n => {
-      // Category filter — stored in nft.category or derived from nft.name
-      if (category !== "all") {
-        const nftCat = (n.category || "").toLowerCase();
-        if (!nftCat.includes(category.toLowerCase())) return false;
-      }
-      // Price range filter
-      if (priceMin !== "" && parseFloat(n.price) < parseFloat(priceMin)) return false;
-      if (priceMax !== "" && parseFloat(n.price) > parseFloat(priceMax)) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === "price-low") return parseFloat(a.price) - parseFloat(b.price);
-      if (sortBy === "price-high") return parseFloat(b.price) - parseFloat(a.price);
-      return b.id - a.id;
-    });
+        if (filter === "sale") return n.listed && !n.sold;
+        if (filter === "mine") return n.ownerFull === walletAddress;
+        if (filter === "fav") return likes[n.nftKey];
+        return true;
+      })
+      .filter(n => {
+        // Category filter — stored in nft.category or derived from nft.name
+        if (category !== "all") {
+          const nftCat = (n.category || "").toLowerCase();
+          if (!nftCat.includes(category.toLowerCase())) return false;
+        }
+        // Price range filter
+        if (priceMin !== "" && parseFloat(n.price) < parseFloat(priceMin)) return false;
+        if (priceMax !== "" && parseFloat(n.price) > parseFloat(priceMax)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === "price-low") return parseFloat(a.price) - parseFloat(b.price);
+        if (sortBy === "price-high") return parseFloat(b.price) - parseFloat(a.price);
+        return b.id - a.id;
+      });
+  }, [listings, searchQuery, filter, likes, category, priceMin, priceMax, sortBy, walletAddress]);
 
-  const listedCount = listings.filter(n => n.listed && !n.sold).length;
+  const listedCount = useMemo(() => {
+    return listings.filter(n => n.listed && !n.sold).length;
+  }, [listings]);
 
-  const myCount = listings.filter(n => n.ownerFull === walletAddress).length;
+  const myCount = useMemo(() => {
+    return listings.filter(n => n.ownerFull === walletAddress).length;
+  }, [listings, walletAddress]);
 
   // ── Save listing to Firebase ──────────────────────────────────────────────
   const saveToFirebase = async (nft, price) => {
@@ -304,6 +310,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       });
 
       setSuccessTx({ hash: response.hash, nftName: nft.name, price: nft.price, currency: nft.currency });
+      clearNFTCache();
       setStatusMsg("");
 
     } catch (e) {
@@ -338,6 +345,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
     }
     try {
       await saveToFirebase(selectedNft, listPrice);
+      clearNFTCache();
       
       // Log Activity
       await recordActivity(walletAddress, {
@@ -364,6 +372,7 @@ export default function MarketplacePage({ walletAddress, initialFilter = "all", 
       if (!current) return current;
       return { ...current, listed: false };
     });
+    clearNFTCache();
     setStatusMsg("NFT removed from sale.");
     setTimeout(() => setStatusMsg(""), 3000);
   };

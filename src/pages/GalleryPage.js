@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ref, set } from "firebase/database";
@@ -8,6 +8,7 @@ import { containerVariants, itemVariants } from "../components/ProfilePage";
 import { useTheme } from "../context/ThemeContext";
 import { shortenAddress } from "../utils";
 import { recordActivity } from "../utils/activityService";
+import { clearNFTCache } from "../utils/soroban";
 import "./GalleryPage.css";
 
 export default function GalleryPage({ nfts, walletAddress }) {
@@ -20,12 +21,14 @@ export default function GalleryPage({ nfts, walletAddress }) {
   const [listing, setListing] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const uniqueNfts = nfts ? nfts.filter((nft, index, self) =>
-    index === self.findIndex((n) =>
-      n.name === nft.name &&
-      (n.imageId || n.image) === (nft.imageId || nft.image)
-    )
-  ) : [];
+  const uniqueNfts = useMemo(() => {
+    return nfts ? nfts.filter((nft, index, self) =>
+      index === self.findIndex((n) =>
+        n.name === nft.name &&
+        (n.imageId || n.image) === (nft.imageId || nft.image)
+      )
+    ) : [];
+  }, [nfts]);
 
   const isEmpty = uniqueNfts.length === 0;
 
@@ -60,6 +63,7 @@ export default function GalleryPage({ nfts, walletAddress }) {
           selectedNft.name?.toLowerCase().includes("job cert"),
         listedAt: Date.now(),
       });
+      clearNFTCache();
 
       // Log Activity
       await recordActivity(walletAddress, {

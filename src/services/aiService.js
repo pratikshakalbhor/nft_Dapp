@@ -6,6 +6,20 @@
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 
 export async function callClaude(prompt, maxTokens = 500) {
+  // Create solid cache key based on prompt contents
+  const normalizedPrompt = prompt.replace(/\s+/g, " ").trim();
+  const cacheKey = `ai_claude_cache_${hashString(normalizedPrompt)}`;
+
+  try {
+    const cachedResult = localStorage.getItem(cacheKey);
+    if (cachedResult) {
+      console.log("[AI Service] Cache hit for prompt");
+      return JSON.parse(cachedResult);
+    }
+  } catch (e) {
+    console.warn("[AI Service] Cache read error:", e);
+  }
+
   const apiKey = process.env.REACT_APP_ANTHROPIC_API_KEY;
 
   if (!apiKey || apiKey === "your_anthropic_api_key_here") {
@@ -37,5 +51,23 @@ export async function callClaude(prompt, maxTokens = 500) {
   const data = await response.json();
   const text = data.content?.[0]?.text || "";
   const clean = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(clean);
+  const result = JSON.parse(clean);
+
+  try {
+    localStorage.setItem(cacheKey, JSON.stringify(result));
+  } catch (e) {
+    console.warn("[AI Service] Cache write error:", e);
+  }
+
+  return result;
+}
+
+// Simple and fast hashing algorithm to generate stable cache keys
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(16);
 }
