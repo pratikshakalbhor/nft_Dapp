@@ -21,11 +21,11 @@ import {
   Area
 } from "recharts";
 import { ref, onValue, set } from "firebase/database";
-import { db } from "../firebase";
-import { useWallet } from "../WalletContext";
+import { db } from "../services/firebase";
+import { useWallet } from "../context/WalletContext";
 import { useTheme } from "../context/ThemeContext";
 import { fetchNFTById } from "../utils/soroban";
-import { shortenAddress } from "../utils";
+import { shortenAddress } from "../utils/helpers";
 import AuctionTimer from "../components/AuctionTimer";
 
 const containerVariants = {

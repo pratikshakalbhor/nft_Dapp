@@ -5,7 +5,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
-import { WalletProvider } from './WalletContext';
+import { WalletProvider } from './context/WalletContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 // Prevent irrelevant MetaMask errors from crashing the React app during development

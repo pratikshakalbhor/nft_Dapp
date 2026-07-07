@@ -12,11 +12,9 @@ export const WALLET_TYPES = {
   XBULL: "XBULL",
 };
 
-// ── Detect installed wallets ──────────────────────────────────────────────────
 export const checkConnection = async () => {
   try {
     const result = await isConnected();
-    // v2+: returns { isConnected: boolean }, v1: returns boolean directly
     const freighterInstalled =
       typeof result === "boolean" ? result : result?.isConnected === true;
     const isXBullInstalled = !!(window.xBull || window.xbull);
@@ -26,7 +24,6 @@ export const checkConnection = async () => {
   }
 };
 
-// ── Freighter ─────────────────────────────────────────────────────────────────
 export const connectFreighter = async () => {
   const connCheck = await isConnected();
   const installed =
@@ -34,10 +31,8 @@ export const connectFreighter = async () => {
 
   if (!installed) throw new Error("Freighter not installed");
 
-  // requestAccess prompts the user to allow access
   await requestAccess();
 
-  // getAddress returns { address: string } in v6
   const addrResult = await getAddress();
   const address =
     typeof addrResult === "string" ? addrResult : addrResult?.address;
@@ -46,14 +41,12 @@ export const connectFreighter = async () => {
   return { address, type: WALLET_TYPES.FREIGHTER };
 };
 
-// ── Albedo ────────────────────────────────────────────────────────────────────
 export const connectAlbedo = async () => {
   const res = await albedo.publicKey({});
   if (!res.pubkey) throw new Error("Albedo connection rejected");
   return { address: res.pubkey, type: WALLET_TYPES.ALBEDO };
 };
 
-// ── xBull ─────────────────────────────────────────────────────────────────────
 export const connectXBull = async () => {
   const connector = window.xBull || window.xbull;
   if (!connector) throw new Error("xBull not installed");
@@ -61,20 +54,14 @@ export const connectXBull = async () => {
   return { address, type: WALLET_TYPES.XBULL };
 };
 
-// ── Sign transaction ──────────────────────────────────────────────────────────
-// ✅ NAVA — both positional and object args support:
-// Style 1: signTransaction(xdr, walletType, network, passphrase)
-// Style 2: signTransaction(xdr, { walletType, network, networkPassphrase })
 export const signTransaction = async (xdr, optsOrWalletType = {}, networkArg, networkPassphraseArg) => {
   let walletType, network, networkPassphrase, address;
 
   if (typeof optsOrWalletType === "string") {
-    // Positional args style
     walletType = optsOrWalletType;
     network = networkArg;
     networkPassphrase = networkPassphraseArg;
   } else {
-    // Object args style
     walletType = optsOrWalletType.walletType;
     network = optsOrWalletType.network || networkArg;
     networkPassphrase = optsOrWalletType.networkPassphrase || networkPassphraseArg;

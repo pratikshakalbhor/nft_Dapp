@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { ref, onValue } from "firebase/database";
-import { db } from "../firebase";
+import { db } from "../services/firebase";
 
 import { 
   ShoppingBag, 

@@ -15,10 +15,7 @@ const WALLETS = [
       ios: "https://apps.apple.com/app/freighter/id1556917909",
     },
     detect: async () => {
-      // Priority 1: Direct window check
       if (window.freighter || window.freighter?.isFreighter) return true;
-      
-      // Priority 2: Official library check (async)
       try {
         const result = await isConnected();
         return typeof result === "boolean" ? result : result?.isConnected === true;
@@ -27,7 +24,6 @@ const WALLETS = [
       }
     },
     connect: async () => {
-      // Use official library for connection
       await requestAccess();
       const address = await getAddress();
       return typeof address === 'string' ? address : address?.address;
@@ -39,7 +35,7 @@ const WALLETS = [
     subtitle: "Web Wallet",
     letter: "A",
     color: "#2563EB",
-    detect: async () => true, // Albedo is web-based — always available
+    detect: async () => true,
     installUrl: {
       desktop: "https://albedo.link",
       android: "https://albedo.link",
@@ -85,18 +81,17 @@ export default function WalletModal({ onClose, onConnect }) {
   const [error, setError] = useState("");
   const [installing, setInstalling] = useState(null);
   
-  const [detectedWallets, setDetectedWallets] = useState({ albedo: true }); // Default albedo to true
+  const [detectedWallets, setDetectedWallets] = useState({ albedo: true });
   const [isDetecting, setIsDetecting] = useState(true);
 
   useEffect(() => {
     let attempts = 0;
-    const maxAttempts = 8; // 4 seconds total
+    const maxAttempts = 8;
     let isMounted = true;
 
     const checkWallets = async () => {
       const results = {};
       
-      // Run detections in parallel
       await Promise.all(WALLETS.map(async (w) => {
         results[w.id] = await w.detect();
       }));
@@ -105,7 +100,6 @@ export default function WalletModal({ onClose, onConnect }) {
       
       setDetectedWallets(results);
 
-      // If Freighter is found, or we reached max attempts
       if (results.freighter || attempts >= maxAttempts) {
         setIsDetecting(false);
         return true; 
@@ -113,10 +107,8 @@ export default function WalletModal({ onClose, onConnect }) {
       return false;
     };
 
-    // Initial check
     checkWallets();
 
-    // Retry logic
     const interval = setInterval(async () => {
       attempts++;
       if (await checkWallets()) {
@@ -134,7 +126,6 @@ export default function WalletModal({ onClose, onConnect }) {
     setError("");
     setSelected(wallet.id);
 
-    // Final "Just in Case" check before showing install page
     let isInstalled = detectedWallets[wallet.id];
     if (!isInstalled) {
        isInstalled = await wallet.detect();

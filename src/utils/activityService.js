@@ -1,5 +1,5 @@
 import { ref, push, onValue, query, orderByChild, limitToLast } from "firebase/database";
-import { db } from "../firebase";
+import { db } from "../services/firebase";
 
 /**
  * Supported types: 

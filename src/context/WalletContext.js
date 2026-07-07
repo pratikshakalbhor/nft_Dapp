@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { connectFreighter, connectAlbedo, connectXBull, WALLET_TYPES } from './walletService';
+import { connectFreighter, connectAlbedo, connectXBull, WALLET_TYPES } from '../services/walletService';
 
 const WalletContext = createContext();
 
@@ -93,7 +93,7 @@ export const WalletProvider = ({ children }) => {
     }
   };
 
-  //  Full logout — clears everything
+  // Full logout — clears everything
   const disconnectWallet = (addressToDisconnect) => {
     const activeAddress = typeof walletAddress === 'string'
       ? walletAddress
@@ -110,7 +110,6 @@ export const WalletProvider = ({ children }) => {
         setWalletAddress(newWallets[0].address);
         setWalletType(newWallets[0].type);
       } else {
-        //  Full clear
         setWalletAddress('');
         setWalletType('');
         localStorage.clear();

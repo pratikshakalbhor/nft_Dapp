@@ -219,7 +219,7 @@
   margin: 0;
 }
 
-/* ── Mobile Responsive ── */
+/* Page Responsive */
 @media (max-width: 480px) {
   .wm-modal {
     padding: 22px 18px;

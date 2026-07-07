@@ -1,5 +1,5 @@
 import { ref, push, onValue, update } from "firebase/database";
-import { db } from "../firebase";
+import { db } from "../services/firebase";
 
 
 export const storeNotification = async (toAddress, fromAddress, message, jobTitle, jobId) => {

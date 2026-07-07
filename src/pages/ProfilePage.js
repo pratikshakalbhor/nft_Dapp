@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
-import { useWallet } from "../WalletContext";
+import { useWallet } from "../context/WalletContext";
 import { ref, onValue } from "firebase/database";
-import { db } from "../firebase";
+import { db } from "../services/firebase";
 import { 
   Wallet, 
   LayoutGrid, 
@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   TrendingUp
 } from "lucide-react";
-import { shortenAddress } from "../utils";
+import { shortenAddress } from "../utils/helpers";
 import { motion, AnimatePresence } from "framer-motion";
 
 export const containerVariants = {
@@ -64,13 +64,11 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
   useEffect(() => {
     if (!walletAddress) return;
 
-    // 1. Get Balance
     if (account) {
       const native = account.balances.find(b => b.asset_type === "native");
       if (native) setXlmBalance(parseFloat(native.balance).toFixed(2));
     }
 
-    // 2. Fetch Firebase History
     const marketRef = ref(db, "marketplace");
     const unsubscribe = onValue(marketRef, (snap) => {
       const data = snap.val() || {};
@@ -80,13 +78,11 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
       let earnings = 0;
 
       Object.values(data).forEach(item => {
-        // Sold items
         if (item.sold && item.previousOwner === walletAddress) {
           sCount++;
           earnings += parseFloat(item.price || 0);
           history.push({ ...item, actionType: "sold", date: item.soldAt });
         }
-        // Purchased items
         if (item.sold && item.ownerFull === walletAddress) {
           pCount++;
           history.push({ ...item, actionType: "bought", date: item.soldAt });
@@ -99,7 +95,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
       setMarketHistory(history.sort((a, b) => b.date - a.date));
     });
 
-    // 3. Fetch Follower Counts
     const followerRef = ref(db, `followers/${walletAddress}`);
     const followingRef = ref(db, `following/${walletAddress}`);
     
@@ -164,8 +159,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
       initial="hidden"
       animate="visible"
     >
-      
-      {/* Avatar Section */}
       <div style={{ textAlign: "center", marginBottom: "32px" }}>
         <div style={{
           width: "80px", height: "80px", borderRadius: "50%",
@@ -334,7 +327,6 @@ const ProfilePage = ({ account, nfts: propNfts }) => {
           </motion.div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 };
