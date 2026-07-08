@@ -98,8 +98,8 @@ const TopNav = ({ walletAddress, onDisconnect }) => {
 
   const links = [
     { to: "/dashboard", icon: <LayoutDashboard size={18} />, label: "Dashboard" },
+    { to: "/mint", icon: <ImagePlus size={18} />, label: "Mint NFT" },
     { to: "/gallery", icon: <Images size={18} />, label: "Collection" },
-    { to: "/mint", icon: <ImagePlus size={18} />, label: "Mint" },
     { to: "/marketplace", icon: <Store size={18} />, label: "Market" },
     { to: "/for-sale", icon: <TagIcon size={18} />, label: "Sales" },
     { to: "/my-nfts", icon: <Briefcase size={18} />, label: "Inventory" },
