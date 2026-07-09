@@ -1,18 +1,20 @@
 const axios = require('axios');
 const FormData = require('form-data');
-const fs = require('fs');
 const config = require('../config');
 const { InternalServerError } = require('../utils/errorHandler');
 const logger = require('../utils/logger');
 
-const pinFileToIPFS = async (filePath, originalName) => {
+const pinFileToIPFS = async (fileBuffer, originalName, mimeType) => {
   try {
     if (!config.pinataJwt) {
       throw new Error('PINATA_JWT environment configuration is missing.');
     }
 
     const formData = new FormData();
-    formData.append('file', fs.createReadStream(filePath));
+    formData.append('file', fileBuffer, {
+      filename: originalName,
+      contentType: mimeType,
+    });
 
     const metadata = JSON.stringify({
       name: originalName,
@@ -24,7 +26,7 @@ const pinFileToIPFS = async (filePath, originalName) => {
     });
     formData.append('pinataOptions', options);
 
-    logger.info(`Pinning file "${originalName}" to IPFS via Pinata API...`);
+    logger.info(`Pinning file "${originalName}" from memory buffer to IPFS via Pinata API...`);
     const response = await axios.post(
       'https://api.pinata.cloud/pinning/pinFileToIPFS',
       formData,

@@ -8,6 +8,9 @@ const config = require('./config');
 
 const app = express();
 
+// Trust reverse proxy (e.g. Render, Vercel, Cloudflare)
+app.set('trust proxy', 1);
+
 // Set security headers
 app.use(helmet());
 

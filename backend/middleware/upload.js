@@ -1,17 +1,16 @@
 const multer = require('multer');
 const { BadRequestError } = require('../utils/errorHandler');
 const path = require('path');
+const fs = require('fs');
 
-// Configure upload caching storage
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+// Automatically create the uploads directory if it does not exist (for diskStorage fallback/compat)
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure upload caching storage - Using memoryStorage for Render compatibility
+const storage = multer.memoryStorage();
 
 // File validator rules
 const fileFilter = (req, file, cb) => {
