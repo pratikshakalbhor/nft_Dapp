@@ -30,31 +30,12 @@ const validateFile = (file) => {
 };
 
 const uploadToPinata = async (file) => {
-  const jwt = process.env.REACT_APP_PINATA_JWT;
-  if (!jwt) {
-    throw new Error(
-      "Pinata JWT token (REACT_APP_PINATA_JWT) is missing or undefined. " +
-      "If you recently updated your .env file, please restart your React development server to apply the changes."
-    );
-  }
-
-  const parts = jwt.split(".");
-  if (parts.length !== 3) {
-    throw new Error(
-      "Pinata JWT token (REACT_APP_PINATA_JWT) is malformed. " +
-      `Expected a JWT with 3 segments separated by dots (header.payload.signature), but got ${parts.length}. ` +
-      "Please verify you copied the entire, uncut JWT from Pinata without extra spaces."
-    );
-  }
-
   const formData = new FormData();
   formData.append("file", file);
   try {
-    const response = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
+    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+    const response = await fetch(`${backendUrl}/api/upload`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
       body: formData,
     });
     if (!response.ok) {
@@ -62,10 +43,13 @@ const uploadToPinata = async (file) => {
       throw new Error(`Upload failed: ${response.status} ${errorText}`);
     }
     const data = await response.json();
-    return data.IpfsHash; // ← Pinata returns IpfsHash
+    if (data.status !== "success" || !data.cid) {
+      throw new Error(data.message || "Failed to pin asset via backend");
+    }
+    return data.cid;
   } catch (error) {
     console.error("IPFS Upload Error:", error);
-    throw new Error(error.message || "IPFS upload failed");
+    throw new Error(error.message || "IPFS upload failed via Backend");
   }
 };
 

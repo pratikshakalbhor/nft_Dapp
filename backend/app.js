@@ -20,6 +20,11 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Root route handler to prevent 404 errors on root access
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'success', message: 'Stellar NFT Marketplace Backend is running.' });
+});
+
 // API routing
 app.use('/api', apiRoutes);
 
