@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import { useWallet } from "../context/WalletContext";
 import { signTransaction } from "../services/walletService";
-import { NETWORK, NETWORK_PASSPHRASE, CONTRACT_ID, SOROBAN_SERVER } from "../constants";
+import { NETWORK, NETWORK_PASSPHRASE, CONTRACT_ID, SOROBAN_SERVER, API_BASE_URL } from "../constants";
 import { recordActivity } from "../utils/activityService";
 import { useTheme } from "../context/ThemeContext";
 import { Check as CheckIcon, Copy as CopyIcon, Plus, Sparkles, ImageIcon, Loader } from "lucide-react";
@@ -33,8 +33,7 @@ const uploadToPinata = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
   try {
-    const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-    const response = await fetch(`${backendUrl}/api/upload`, {
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
       method: "POST",
       body: formData,
     });

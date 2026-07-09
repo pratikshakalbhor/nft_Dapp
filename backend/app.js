@@ -11,9 +11,17 @@ const app = express();
 // Set security headers
 app.use(helmet());
 
-// Enable CORS
+// Enable CORS with support for multiple domains (comma-separated config)
+const allowedOrigins = config.corsOrigin ? config.corsOrigin.split(',').map(o => o.trim()) : ['*'];
 app.use(cors({
-  origin: config.corsOrigin
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
+  credentials: true
 }));
 
 // Body parsers
